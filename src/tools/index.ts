@@ -15,4 +15,4 @@ registerToolRenderer("bash", new BashRenderer());
 
 // Re-export for convenience
 export { createJavaScriptReplTool, javascriptReplTool };
-export { browserJavaScriptTool } from "./browser-javascript-userscripts.js";
+export { browserJavaScriptTool, requestUserScriptsPermission } from "./browser-javascript-userscripts.js";

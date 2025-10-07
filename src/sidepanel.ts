@@ -10,7 +10,7 @@ import {
 	AppStorage,
 	ChatPanel,
 	WebExtensionStorageBackend,
-	// PersistentStorageDialog, // TODO: Fix - currently broken
+	// PersistentStorageDialog,
 	ProviderTransport,
 	ProxyTab,
 	SessionIndexedDBBackend,
@@ -22,7 +22,9 @@ import { html, render } from "lit";
 import { History, Plus, Settings } from "lucide";
 import { browserMessageTransformer } from "./message-transformer.js";
 import { createNavigationMessage, type NavigationMessage, registerNavigationRenderer } from "./messages/NavigationMessage.js";
-import { browserJavaScriptTool } from "./tools/index.js";
+import { browserJavaScriptTool, requestUserScriptsPermission } from "./tools/index.js";
+import { UserScriptsPermissionDialog } from "./dialogs/UserScriptsPermissionDialog.js";
+import "./utils/i18n-extension.js";
 import "./utils/live-reload.js";
 
 // Register custom message renderers
@@ -330,11 +332,17 @@ async function initApp() {
 		document.body,
 	);
 
-	// TODO: Fix PersistentStorageDialog - currently broken
 	// Request persistent storage
 	// if (storage.sessions) {
 	// 	await PersistentStorageDialog.request();
 	// }
+
+	// Request userScripts permission if not available
+	// @ts-expect-error - browser global exists in Firefox, chrome in Chrome
+	const browserAPIForPermissions = globalThis.browser || globalThis.chrome;
+	if (!browserAPIForPermissions.userScripts) {
+		await UserScriptsPermissionDialog.request();
+	}
 
 	// Create ChatPanel
 	chatPanel = new ChatPanel();
@@ -342,6 +350,7 @@ async function initApp() {
 	chatPanel.onApiKeyRequired = async (provider: string) => {
 		return await ApiKeyPromptDialog.prompt(provider);
 	};
+
 	chatPanel.onBeforeSend = async () => {
 		if (!agent) return;
 

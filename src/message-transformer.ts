@@ -87,7 +87,7 @@ export function browserMessageTransformer(messages: AppMessage[]): Message[] {
 				const tabInfo = nav.tabIndex !== undefined ? ` (tab ${nav.tabIndex})` : "";
 				return {
 					role: "user",
-					content: `<system>Navigated to ${nav.title}${tabInfo}: ${nav.url}</system>`,
+					content: `<system>Navigated to ${nav.title}${tabInfo}: ${nav.url}. This is just an FYI, so you do not have to issue a tool cal to check which site you are on. Please continue with your task.</system>`,
 				} as Message;
 			}
 

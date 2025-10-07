@@ -8,6 +8,65 @@ import "@mariozechner/pi-web-ui"; // Ensure all components are registered
 // @ts-expect-error - browser global exists in Firefox, chrome in Chrome
 const browser = globalThis.browser || globalThis.chrome;
 
+/**
+ * Check and request userScripts permission.
+ * Must be called from a user gesture (e.g., button click) in Firefox.
+ * IMPORTANT: In Firefox, browser.permissions.request() must be called synchronously
+ * (without any await before it) to preserve the user gesture context.
+ */
+export async function requestUserScriptsPermission(): Promise<{ granted: boolean; message?: string }> {
+	const chromeVersion = Number(navigator.userAgent.match(/(Chrome|Chromium)\/([0-9]+)/)?.[2]);
+	const isChrome = chromeVersion > 0;
+	const isFirefox = !isChrome;
+
+	// Check if API is already available
+	if (browser.userScripts) {
+		return { granted: true };
+	}
+
+	// Firefox: Request userScripts permission
+	if (isFirefox && browser.permissions) {
+		try {
+			// CRITICAL: Call request() synchronously (no await before it) to preserve user gesture context!
+			// Any async operation before this call will break the user gesture chain.
+			const grantedPromise = browser.permissions.request({ permissions: ["userScripts"] });
+
+			// Now we can await the promise result
+			const granted = await grantedPromise;
+			if (granted) {
+				return { granted: true, message: "Permission granted. If the tool still doesn't work, please reload the extension." };
+			} else {
+				return { granted: false, message: "userScripts permission denied. The browser_javascript tool requires this permission to execute code safely." };
+			}
+		} catch (error) {
+			console.error("Failed to request userScripts permission:", error);
+			return { granted: false, message: `Failed to request permission: ${error}` };
+		}
+	}
+
+	// Chrome: userScripts not available
+	if (isChrome) {
+		if (chromeVersion >= 138) {
+			return {
+				granted: false,
+				message: `Chrome ${chromeVersion} detected. To enable User Scripts:\n\n1. Go to chrome://extensions/\n2. Find this extension and click 'Details'\n3. Enable the 'Allow User Scripts' toggle\n4. Refresh the page and try again`
+			};
+		} else if (chromeVersion >= 120) {
+			return {
+				granted: false,
+				message: `Chrome ${chromeVersion} detected. The userScripts API requires Chrome 120+ with experimental features enabled.`
+			};
+		} else {
+			return {
+				granted: false,
+				message: `Chrome ${chromeVersion} detected. The userScripts API requires Chrome 120 or higher. Please update Chrome.`
+			};
+		}
+	}
+
+	return { granted: false, message: "userScripts API not available in this browser." };
+}
+
 // Security safeguards function - will be converted to string with .toString()
 function securitySafeguards() {
 	// Lock down access to sensitive APIs by deleting them from window
@@ -655,11 +714,11 @@ interface BrowserJavaScriptResult {
 export const browserJavaScriptRenderer: ToolRenderer<BrowserJavaScriptParams, BrowserJavaScriptResult> = {
 	renderParams(params: BrowserJavaScriptParams, isStreaming?: boolean): TemplateResult {
 		if (isStreaming && (!params.code || params.code.length === 0)) {
-			return html`<span class="text-sm text-muted">${i18n("Writing JavaScript code...")}</span>`;
+			return html`<div class="text-sm text-muted-foreground mb-2">${i18n("Writing JavaScript code...")}</div>`;
 		}
 
 		return html`
-			<span class="text-sm text-muted">${params.title}</span>
+			<div class="text-sm text-muted-foreground mb-2">${params.title}</div>
 			<code-block .code=${params.code || ""} language="javascript"></code-block>
 		`;
 	},
