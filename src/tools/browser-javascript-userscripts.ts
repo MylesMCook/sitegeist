@@ -542,35 +542,59 @@ This ensures reliable execution.`,
 				};
 			}
 
-			// Create a unique world ID for this execution to ensure isolation between runs
-			const worldId = `exec_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-			// Configure this specific world with CSP that allows eval but blocks network
-			try {
-				await browser.userScripts.configureWorld({
-					worldId: worldId,
-					messaging: true,
-					// Allow eval for code execution, but block all network requests (fetch, XHR, WebSocket, etc.)
-					csp: "script-src 'unsafe-eval'; connect-src 'none'; default-src 'none';",
-				});
-			} catch (e) {
-				// May fail if already configured or not supported - non-fatal
-				console.warn("Failed to configure userScripts world:", e);
-			}
-
 			// Build the wrapper code using the function-based approach
 			// TODO: Add user setting to enable/disable safeguards
 			const wrapperCode = buildWrapperCode(args.code, true); // Safeguards enabled now that we have isolated worlds
 
-			// Execute using userScripts.execute() with a unique worldId for isolation
-			// Use USER_SCRIPT world instead of MAIN to bypass page CSP
-			const results = await browser.userScripts.execute({
-				js: [{ code: wrapperCode }],
-				target: { tabId: tab.id },
-				world: "USER_SCRIPT",
-				worldId: worldId,
-				injectImmediately: true,
-			});
+			let results: any[];
+
+			// Dual implementation: Use userScripts.execute() if available (Chrome 135+),
+			// otherwise fall back to scripting.executeScript()
+			if (browser.userScripts && typeof browser.userScripts.execute === "function") {
+				// Chrome 135+ or future Firefox: Use userScripts.execute() API
+				// This provides proper USER_SCRIPT world with configurable CSP
+				const worldId = `exec_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+				// Configure this specific world with CSP that allows eval but blocks network
+				try {
+					await browser.userScripts.configureWorld({
+						worldId: worldId,
+						messaging: true,
+						// Allow eval for code execution, but block all network requests (fetch, XHR, WebSocket, etc.)
+						csp: "script-src 'unsafe-eval'; connect-src 'none'; default-src 'none';",
+					});
+				} catch (e) {
+					// May fail if already configured or not supported - non-fatal
+					console.warn("Failed to configure userScripts world:", e);
+				}
+
+				results = await browser.userScripts.execute({
+					js: [{ code: wrapperCode }],
+					target: { tabId: tab.id },
+					world: "USER_SCRIPT",
+					worldId: worldId,
+					injectImmediately: true,
+				});
+			} else {
+				// Fallback for Firefox (doesn't have userScripts.execute yet):
+				// Use scripting.executeScript() with func parameter
+				// The func gets serialized and executed in ISOLATED world (has DOM access but not page JS)
+				results = await browser.scripting.executeScript({
+					target: { tabId: tab.id },
+					world: "ISOLATED",
+					injectImmediately: true,
+					// The function receives the wrapper code as a string and evaluates it
+					// This is safe because the wrapper code already includes all security safeguards
+					// eslint-disable-next-line @typescript-eslint/no-implied-eval, no-eval, no-sequences
+					func: (code: string) => {
+						// Use indirect eval to execute in ISOLATED world context
+						// In Firefox, window.eval() would run in page context, but we want ISOLATED
+						// So we use (0, eval) which is indirect eval in the current scope
+						return (0, eval)(code);
+					},
+					args: [wrapperCode],
+				});
+			}
 
 			const result = results[0]?.result as
 				| {
