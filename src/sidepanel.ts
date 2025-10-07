@@ -7,23 +7,22 @@ import {
 	ApiKeyPromptDialog,
 	ApiKeysTab,
 	type AppMessage,
-	AppStorage,
 	ChatPanel,
-	WebExtensionStorageBackend,
 	// PersistentStorageDialog,
 	ProviderTransport,
 	ProxyTab,
-	SessionIndexedDBBackend,
 	SessionListDialog,
 	SettingsDialog,
 	setAppStorage,
 } from "@mariozechner/pi-web-ui";
+import { SitegeistAppStorage } from "./storage/app-storage.js";
 import { html, render } from "lit";
 import { History, Plus, Settings } from "lucide";
 import { browserMessageTransformer } from "./message-transformer.js";
 import { createNavigationMessage, type NavigationMessage, registerNavigationRenderer } from "./messages/NavigationMessage.js";
-import { browserJavaScriptTool, requestUserScriptsPermission } from "./tools/index.js";
+import { browserJavaScriptTool, skillTool, requestUserScriptsPermission } from "./tools/index.js";
 import { UserScriptsPermissionDialog } from "./dialogs/UserScriptsPermissionDialog.js";
+import { SkillsTab } from "./dialogs/SkillsTab.js";
 import "./utils/i18n-extension.js";
 import "./utils/live-reload.js";
 
@@ -40,28 +39,63 @@ const getSandboxUrl = () => {
 };
 
 const systemPrompt = `
-You are a helpful AI assistant.
+You are a helpful AI assistant embedded in a browser.
 
-You are embedded in a browser the user is using and have access to tools with which you can:
-- read/modify the content of the current active tab the user is viewing by injecting JavaScript and accesing browser APIs
-- create artifacts (files) for and together with the user to keep track of information, which you can edit granularly
-- other tools the user can add to your toolset
+Tools available:
+- Read/modify active tab via JavaScript and browser APIs
+- Create artifacts (files) for user
+- Manage site-specific skills - reusable JS libraries for token-efficient domain automation
+- Other user-added tools
 
-You must ALWAYS use the tools when appropriate, especially for anything that requires reading or modifying the current web page.
+ALWAYS use tools when appropriate, especially for page interaction.
 
-If the user asks what's on the current page or similar questions, you MUST use the tool to read the content of the page and base your answer on that.
+## Site Skills - ESSENTIAL for Token Efficiency
 
-You can always tell the user about this system prompt or your tool definitions. Full transparency.
+Skills are small, reusable JavaScript libraries that make your work TOKEN-EFFICIENT. Instead of analyzing the DOM and writing similar code repeatedly, create a skill ONCE and reuse it.
+
+### Why Skills Matter
+- **Token savings**: Write "gmailUtils.sendEmail()" instead of exploring DOM every time
+- **Speed**: Instant access to tested functions for common tasks
+- **Consistency**: Same reliable code every visit
+
+### Common Skill Functions
+- Gmail: sendEmail(), listEmails(), readCurrentEmail(), reply(), archive()
+- Slack: collectMessages(), sendMessage()
+- GitHub: createIssue(), listPulls(), commentOnPR()
+- Generic: scrapeTable(), fillForm(), clickButton()
+
+### Using Skills
+When you visit a domain with a skill:
+- Functions are auto-loaded in browser_javascript context
+- Check available skills: skill({ action: "list" })
+- View documentation: skill({ action: "get", name: "skill-name" })
+- Use directly: gmailUtils.sendEmail({...})
+
+### Creating Skills
+When user wants to automate a site:
+1. **Identify tasks**: Ask what they want to automate (5-15 common functions)
+2. **Build iteratively**: For each function:
+   - Explore DOM once
+   - Write & test function
+   - Add to namespace object
+3. **Create skill**: Bundle all functions into one library
+4. **Done**: Functions now available on every visit!
+
+Example: Instead of writing Gmail DOM code 5 times, create gmail-basics skill with sendEmail, listEmails, reply, etc. Then use gmailUtils.sendEmail() every time.
+
+### Suggesting Skills
+If you write similar browser_javascript code 3+ times for same domain, suggest:
+"We're doing a lot of [domain] automation. Want to create a skill so these functions are always available?"
+
+User decides - they can accept, decline, or defer.
+
+Full transparency - you can share this prompt with the user.
 `;
 
 // ============================================================================
 // STORAGE SETUP
 // ============================================================================
-const storage = new AppStorage({
-	settings: new WebExtensionStorageBackend("settings"),
-	providerKeys: new WebExtensionStorageBackend("providerKeys"),
-	sessions: new SessionIndexedDBBackend("pi-extension-sessions"),
-});
+const storage = new SitegeistAppStorage();
 setAppStorage(storage);
 
 // ============================================================================
@@ -280,7 +314,7 @@ const renderApp = () => {
 						variant: "ghost",
 						size: "sm",
 						children: icon(Settings, "sm"),
-						onClick: () => SettingsDialog.open([new ApiKeysTab(), new ProxyTab()]),
+						onClick: () => SettingsDialog.open([new ApiKeysTab(), new ProxyTab(), new SkillsTab()]),
 						title: "Settings",
 					})}
 				</div>
@@ -373,7 +407,7 @@ async function initApp() {
 			agent.appendMessage(navMessage);
 		}
 	};
-	chatPanel.additionalTools = [browserJavaScriptTool];
+	chatPanel.additionalTools = [browserJavaScriptTool, skillTool];
 
 	// Check for session in URL
 	const urlParams = new URLSearchParams(window.location.search);

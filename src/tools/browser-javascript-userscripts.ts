@@ -3,6 +3,7 @@ import type { AgentTool, ToolResultMessage } from "@mariozechner/pi-ai";
 import { type Attachment, i18n, registerToolRenderer, type ToolRenderer } from "@mariozechner/pi-web-ui";
 import { type Static, Type } from "@sinclair/typebox";
 import "@mariozechner/pi-web-ui"; // Ensure all components are registered
+import { getSitegeistStorage } from "../storage/app-storage.js";
 
 // Cross-browser API compatibility
 // @ts-expect-error - browser global exists in Firefox, chrome in Chrome
@@ -303,7 +304,7 @@ async function wrapperFunction() {
 }
 
 // Build the wrapper code by combining safeguards and wrapper, then replacing placeholder
-function buildWrapperCode(userCode: string, enableSafeguards: boolean): string {
+function buildWrapperCode(userCode: string, skillLibrary: string, enableSafeguards: boolean): string {
 	// No escaping needed - we're injecting raw code into a function body
 	let code = `(${wrapperFunction.toString()})`;
 
@@ -314,8 +315,16 @@ function buildWrapperCode(userCode: string, enableSafeguards: boolean): string {
 			.replace(/^function securitySafeguards\(\) \{/, "")
 			.replace(/\}$/, "");
 		code = code.replace(
-			/async function wrapperFunction\(userCode\) \{/,
-			`async function wrapperFunction(userCode) {\n${safeguardsBody}`,
+			/async function wrapperFunction\(\) \{/,
+			`async function wrapperFunction() {\n${safeguardsBody}`,
+		);
+	}
+
+	// Inject skill library after safeguards but before user code
+	if (skillLibrary) {
+		code = code.replace(
+			/async function wrapperFunction\(\) \{/,
+			`async function wrapperFunction() {\n${skillLibrary}`,
 		);
 	}
 
@@ -542,9 +551,20 @@ This ensures reliable execution.`,
 				};
 			}
 
+			// Load all skills for current domain and prepend libraries
+			const skillsRepo = getSitegeistStorage().skills;
+			let skillLibrary = "";
+
+			if (tab.url) {
+				const matchingSkills = await skillsRepo.getSkillsForUrl(tab.url);
+				if (matchingSkills.length > 0) {
+					skillLibrary = matchingSkills.map((s) => s.library).join("\n\n") + "\n\n";
+				}
+			}
+
 			// Build the wrapper code using the function-based approach
 			// TODO: Add user setting to enable/disable safeguards
-			const wrapperCode = buildWrapperCode(args.code, true); // Safeguards enabled now that we have isolated worlds
+			const wrapperCode = buildWrapperCode(args.code, skillLibrary, false); // Safeguards enabled now that we have isolated worlds
 
 			let results: any[];
 

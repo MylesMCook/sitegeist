@@ -1,6 +1,7 @@
 import type { Message } from "@mariozechner/pi-ai";
 import type { AppMessage } from "@mariozechner/pi-web-ui";
 import type { NavigationMessage } from "./messages/NavigationMessage.js";
+import { getSitegeistStorage } from "./storage/app-storage.js";
 
 // Helper: Check if a message has toolCall blocks
 function hasToolCalls(msg: Message): boolean {
@@ -74,32 +75,39 @@ function reorderMessages(messages: Message[]): Message[] {
 
 // Custom message transformer for browser extension
 // Handles navigation messages and app-specific message types
-export function browserMessageTransformer(messages: AppMessage[]): Message[] {
-	const transformed = messages
-		.filter((m) => {
-			// Keep LLM-compatible messages + navigation messages
-			return m.role === "user" || m.role === "assistant" || m.role === "toolResult" || m.role === "navigation";
-		})
-		.map((m) => {
-			// Transform navigation messages to user messages with <system> tags
-			if (m.role === "navigation") {
-				const nav = m as NavigationMessage;
-				const tabInfo = nav.tabIndex !== undefined ? ` (tab ${nav.tabIndex})` : "";
-				return {
-					role: "user",
-					content: `<system>Navigated to ${nav.title}${tabInfo}: ${nav.url}. This is just an FYI, so you do not have to issue a tool cal to check which site you are on. Please continue with your task.</system>`,
-				} as Message;
+export async function browserMessageTransformer(messages: AppMessage[]): Promise<Message[]> {
+	const skillsRepo = getSitegeistStorage().skills;
+	const transformed = [];
+
+	for (const m of messages) {
+		// Filter non-LLM messages
+		if (m.role !== "user" && m.role !== "assistant" && m.role !== "toolResult" && m.role !== "navigation") {
+			continue;
+		}
+
+		if (m.role === "navigation") {
+			const nav = m as NavigationMessage;
+			const tabInfo = nav.tabIndex !== undefined ? ` (tab ${nav.tabIndex})` : "";
+
+			// Load skills matching this navigation URL
+			const skills = await skillsRepo.getSkillsForUrl(nav.url);
+			let skillsInfo = "";
+			if (skills.length > 0) {
+				const skillNames = skills.map(s => s.name).join(", ");
+				skillsInfo = `\n\nAvailable skills: ${skillNames}. If relevant for current task, use skill tool with { action: "get", name: "skill-name" } to learn about a skill.`;
 			}
 
-			// Strip attachments from user messages
-			if (m.role === "user") {
-				const { attachments, ...rest } = m as any;
-				return rest as Message;
-			}
+			transformed.push({
+				role: "user",
+				content: `<browser-context>Navigated to ${nav.title}${tabInfo}: ${nav.url}${skillsInfo}</browser-context>`,
+			} as Message);
+		} else if (m.role === "user") {
+			const { attachments, ...rest } = m as any;
+			transformed.push(rest as Message);
+		} else {
+			transformed.push(m as Message);
+		}
+	}
 
-			return m as Message;
-		});
-
-	// Reorder to ensure tool calls and results are adjacent
 	return reorderMessages(transformed);
 }
