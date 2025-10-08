@@ -51,6 +51,7 @@ const skillParamsSchema = Type.Object({
 		description: "Action to perform",
 	}),
 	name: Type.Optional(Type.String({ description: "Skill name (required for get/update/delete)" })),
+	url: Type.Optional(Type.String({ description: "URL to filter skills by domain (optional for list action, defaults to current tab URL)" })),
 	data: Type.Optional(
 		Type.Object({
 			name: Type.String({ description: "Unique skill name" }),
@@ -104,8 +105,10 @@ Then use it efficiently:
 1. **get** - View skill description and examples
    { action: "get", name: "gmail-basics" }
 
-2. **list** - List skills for current domain
-   { action: "list" }
+2. **list** - List skills
+   { action: "list" } - Lists skills for current tab URL
+   { action: "list", url: "https://example.com" } - Lists skills for specific URL
+   { action: "list", url: "" } - Lists ALL skills (no filtering)
 
 3. **create** - Create new skill
    { action: "create", data: { name, domainPatterns, shortDescription, description, examples, library } }
@@ -179,9 +182,16 @@ If invalid skill name provided, returns list of available skills for domain.`,
 				}
 
 				case "list": {
-					const skillList = await skillsRepo.listSkills(currentUrl);
+					// Determine which URL to use for filtering
+					// args.url === undefined -> use current tab URL (default)
+					// args.url === "" -> list ALL skills (no filtering)
+					// args.url === "https://..." -> use specified URL
+					const filterUrl = args.url === undefined ? currentUrl : args.url === "" ? undefined : args.url;
+
+					const skillList = await skillsRepo.listSkills(filterUrl);
 					if (skillList.length === 0) {
-						return { output: "No skills found for current domain.", isError: false, details: { skills: [] } };
+						const msg = filterUrl ? "No skills found for specified domain." : "No skills found.";
+						return { output: msg, isError: false, details: { skills: [] } };
 					}
 
 					// Token-efficient list for LLM: name: short description
