@@ -698,6 +698,7 @@ Track Firefox implementation: https://bugzilla.mozilla.org/show_bug.cgi?id=19307
 			}
 		} catch (error: unknown) {
 			const err = error as Error;
+			console.error('[browser-javascript] Caught error, re-throwing:', err.message);
 			// All errors (including abort) are re-thrown so the agent framework marks the tool call as failed
 			throw err;
 		}
