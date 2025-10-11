@@ -2,7 +2,10 @@ import { Button, icon } from "@mariozechner/mini-lit";
 import { getModel } from "@mariozechner/pi-ai";
 import { html, render } from "lit";
 import { ArrowLeft, Play } from "lucide";
+import { setAppStorage } from "@mariozechner/pi-web-ui";
+import { SitegeistAppStorage } from "./storage/app-storage.js";
 import "./debug/ReplPanel.js";
+import "./debug/BrowserReplPanel.js";
 
 
 interface TestPrompt {
@@ -16,6 +19,10 @@ const models = [
 	getModel("google", "gemini-2.5-pro"),
 	getModel("openrouter", "z-ai/glm-4.6")
 ]
+
+// Initialize AppStorage so tools relying on Sitegeist storage can operate in debug page
+const storage = new SitegeistAppStorage();
+setAppStorage(storage);
 
 const TEST_PROMPTS: TestPrompt[] = [
 	{
@@ -77,6 +84,14 @@ const renderDebugPage = () => {
 						<h2 class="text-lg font-semibold mb-3">JavaScript REPL</h2>
 						<div class="border border-border rounded-lg overflow-hidden" style="height: 600px;">
 							<repl-panel></repl-panel>
+						</div>
+					</div>
+
+					<!-- Browser JavaScript Panel Section -->
+					<div>
+						<h2 class="text-lg font-semibold mb-3">Browser JavaScript</h2>
+						<div class="border border-border rounded-lg overflow-hidden" style="height: 600px;">
+							<browser-repl-panel></browser-repl-panel>
 						</div>
 					</div>
 
