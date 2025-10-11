@@ -3,6 +3,19 @@ import { translations as webUiTranslations } from "@mariozechner/pi-web-ui";
 
 declare module "@mariozechner/mini-lit" {
 	interface i18nMessages {
+		// Web-UI base keys (needed for type safety)
+		"Delete this session?": string;
+		Today: string;
+		Yesterday: string;
+		"{days} days ago": string;
+		Sessions: string;
+		"Load a previous conversation": string;
+		"No sessions yet": string;
+		messages: string;
+		Delete: string;
+		"Loading...": string;
+
+		// Sitegeist extension keys
 		"Permission request failed": string;
 		"JavaScript Execution Permission Required": string;
 		"This extension needs permission to execute JavaScript code on web pages": string;
@@ -37,6 +50,8 @@ declare module "@mariozechner/mini-lit" {
 		"Navigating to": string;
 		"Click to open": string;
 		"Waiting...": string;
+		Current: string;
+		Locked: string;
 	}
 }
 
@@ -83,6 +98,8 @@ const sitegeistTranslations = {
 		"Navigating to": "Navigating to",
 		"Click to open": "Click to open",
 		"Waiting...": "Waiting...",
+		Current: "Current",
+		Locked: "Locked",
 	},
 	de: {
 		"Permission request failed": "Berechtigungsanfrage fehlgeschlagen",
@@ -126,6 +143,8 @@ const sitegeistTranslations = {
 		"Navigating to": "Navigiere zu",
 		"Click to open": "Klicken zum Öffnen",
 		"Waiting...": "Warte...",
+		Current: "Aktuell",
+		Locked: "Gesperrt",
 	},
 };
 

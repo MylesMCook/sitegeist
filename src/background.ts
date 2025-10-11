@@ -31,34 +31,98 @@ if (isFirefox) {
 	});
 }
 
-// Track if sidepanel is open (Chrome only - Firefox handles this differently)
-let sidePanelOpen = false;
+// Session lock manager - tracks which sessions are open in which windows
+const sessionLocks = new Map<string, number>(); // sessionId -> windowId
+const windowPorts = new Map<number, chrome.runtime.Port>(); // windowId -> port
 
-// Handle keyboard shortcut
+// Handle port connections from sidepanels
+browserAPI.runtime.onConnect.addListener((port) => {
+	// Port name format: "sidepanel:${windowId}"
+	const match = /^sidepanel:(\d+)$/.exec(port.name);
+	if (!match) return;
+
+	const windowId = Number(match[1]);
+	windowPorts.set(windowId, port);
+
+	port.onMessage.addListener((msg) => {
+		if (msg.type === "acquireLock") {
+			const { sessionId, windowId: reqWindowId } = msg;
+
+			// Check if lock exists and owner port is still alive
+			const ownerWindowId = sessionLocks.get(sessionId);
+			const ownerPortAlive =
+				ownerWindowId !== undefined && windowPorts.has(ownerWindowId);
+
+			// Grant lock if: no owner, owner port dead, or requesting window is owner
+			if (
+				!ownerWindowId ||
+				!ownerPortAlive ||
+				ownerWindowId === reqWindowId
+			) {
+				sessionLocks.set(sessionId, reqWindowId);
+				port.postMessage({ type: "lockResult", sessionId, success: true });
+			} else {
+				port.postMessage({
+					type: "lockResult",
+					sessionId,
+					success: false,
+					ownerWindowId,
+				});
+			}
+		} else if (msg.type === "getLockedSessions") {
+			const locks: Record<string, number> = {};
+			for (const [sid, wid] of sessionLocks.entries()) {
+				locks[sid] = wid;
+			}
+			port.postMessage({ type: "lockedSessions", locks });
+		}
+	});
+
+	port.onDisconnect.addListener(() => {
+		// Sidepanel closed/crashed/navigated - release all locks for this window
+		for (const [sessionId, lockWindowId] of sessionLocks.entries()) {
+			if (lockWindowId === windowId) {
+				sessionLocks.delete(sessionId);
+			}
+		}
+		windowPorts.delete(windowId);
+	});
+});
+
+// Clean up locks when entire window closes (belt-and-suspenders)
+browserAPI.windows.onRemoved.addListener((windowId: number) => {
+	for (const [sessionId, lockWindowId] of sessionLocks.entries()) {
+		if (lockWindowId === windowId) {
+			sessionLocks.delete(sessionId);
+		}
+	}
+	windowPorts.delete(windowId);
+});
+
+// Handle keyboard shortcut - toggle sidepanel open/close
 browserAPI.commands?.onCommand.addListener(async (command: string) => {
 	if (command === "toggle-sidepanel") {
 		if (isFirefox) {
 			// Firefox: just toggle the sidebar
 			toggleSidePanel();
 		} else {
-			// Chrome: check if sidepanel is open and close it, or open it
-			if (sidePanelOpen) {
-				// Send message to sidepanel to close itself
+			// Chrome: check if sidepanel is open via port existence
+			const w = await browserAPI.windows.getCurrent();
+			if (!w?.id) return;
+
+			const port = windowPorts.get(w.id);
+			if (port) {
+				// Sidepanel is open - tell it to close itself
 				try {
-					await browserAPI.runtime.sendMessage({ type: "toggle-sidepanel" });
-					sidePanelOpen = false;
-				} catch (_e) {
-					// Sidepanel might already be closed
-					sidePanelOpen = false;
+					port.postMessage({ type: "close-yourself" });
+				} catch {
+					// Port already disconnected
 				}
 			} else {
-				// Open the sidepanel
-				browserAPI.windows.getCurrent((w: any) => {
-					if (w.id && (browserAPI as any).sidePanel?.open) {
-						(browserAPI as any).sidePanel.open({ windowId: w.id });
-						sidePanelOpen = true;
-					}
-				});
+				// Sidepanel is closed - open it
+				if ((browserAPI as any).sidePanel?.open) {
+					(browserAPI as any).sidePanel.open({ windowId: w.id });
+				}
 			}
 		}
 	}

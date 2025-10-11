@@ -11,12 +11,12 @@ import {
 	// PersistentStorageDialog,
 	ProviderTransport,
 	ProxyTab,
-	SessionListDialog,
 	SettingsDialog,
 	setAppStorage,
 } from "@mariozechner/pi-web-ui";
 import { html, render } from "lit";
 import { History, Plus, Settings } from "lucide";
+import { SitegeistSessionListDialog } from "./dialogs/SessionListDialog.js";
 import { SkillsTab } from "./dialogs/SkillsTab.js";
 import { UserScriptsPermissionDialog } from "./dialogs/UserScriptsPermissionDialog.js";
 import { browserMessageTransformer } from "./message-transformer.js";
@@ -62,10 +62,35 @@ let isEditingTitle = false;
 let agent: Agent;
 let chatPanel: ChatPanel;
 let agentUnsubscribe: (() => void) | undefined;
+let currentWindowId: number | undefined;
+let port: chrome.runtime.Port;
+
+// Export port getter for other modules (e.g., SessionListDialog)
+export function getPort(): chrome.runtime.Port {
+	return port;
+}
 
 // ============================================================================
 // HELPERS
 // ============================================================================
+
+// Send message via port and wait for response
+function sendPortMessage<T = any>(message: any): Promise<T> {
+	return new Promise((resolve) => {
+		const listener = (msg: any) => {
+			// Match response by type
+			if (
+				(message.type === "acquireLock" && msg.type === "lockResult") ||
+				(message.type === "getLockedSessions" && msg.type === "lockedSessions")
+			) {
+				port.onMessage.removeListener(listener);
+				resolve(msg);
+			}
+		};
+		port.onMessage.addListener(listener);
+		port.postMessage(message);
+	});
+}
 
 const generateTitle = (messages: AppMessage[]): string => {
 	const firstUserMsg = messages.find((m) => m.role === "user");
@@ -265,12 +290,14 @@ const createAgent = async (initialState?: Partial<AgentState>, shouldSave = true
 };
 
 const loadSession = (sessionId: string) => {
+	// Navigation will disconnect port and auto-release locks
 	const url = new URL(window.location.href);
 	url.searchParams.set("session", sessionId);
 	window.location.href = url.toString();
 };
 
 const newSession = () => {
+	// Navigation will disconnect port and auto-release locks
 	const url = new URL(window.location.href);
 	url.search = "?new=true";
 	window.location.href = url.toString();
@@ -290,11 +317,11 @@ const renderApp = () => {
 						size: "sm",
 						children: icon(History, "sm"),
 						onClick: () => {
-							SessionListDialog.open(
-								(sessionId) => {
+							SitegeistSessionListDialog.open(
+								(sessionId: string) => {
 									loadSession(sessionId);
 								},
-								(deletedSessionId) => {
+								(deletedSessionId: string) => {
 									// Only reload if the current session was deleted
 									if (deletedSessionId === currentSessionId) {
 										newSession();
@@ -413,12 +440,15 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
 	// Only care about URL changes on the active tab while agent is working
 	// Ignore chrome-extension:// URLs (extension internal pages)
 	// Ignore tool-initiated navigations (handled by the navigate tool itself)
+	// Ignore tabs from other windows
 	if (
 		changeInfo.url &&
 		tab.active &&
 		tab.url &&
+		tab.windowId === currentWindowId &&
 		agent?.state.isStreaming &&
 		!tab.url.startsWith("chrome-extension://") &&
+		!tab.url.startsWith("moz-extension://") &&
 		!isToolNavigating()
 	) {
 		const navMessage = createNavigationMessage(
@@ -434,6 +464,9 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
 
 // Listen for tab activation (user switches tabs) only when agent is running
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
+	// Ignore tab activations from other windows
+	if (activeInfo.windowId !== currentWindowId) return;
+
 	const tab = await chrome.tabs.get(activeInfo.tabId);
 	// Ignore chrome-extension:// URLs (extension internal pages)
 	// Ignore tool-initiated navigations (handled by the navigate tool itself)
@@ -441,6 +474,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 		tab.url &&
 		agent?.state.isStreaming &&
 		!tab.url.startsWith("chrome-extension://") &&
+		!tab.url.startsWith("moz-extension://") &&
 		!isToolNavigating()
 	) {
 		const navMessage = createNavigationMessage(
@@ -465,12 +499,8 @@ window.addEventListener("keydown", (e) => {
 	}
 });
 
-// Listen for toggle command from background script
-browserAPI.runtime.onMessage.addListener((message: { type: string }) => {
-	if (message.type === "toggle-sidepanel") {
-		window.close();
-	}
-});
+// Note: Lock cleanup handled automatically by port disconnect on close/navigation/crash
+// No manual beforeunload handler needed - port.onDisconnect does it all
 
 // ============================================================================
 // INIT
@@ -485,6 +515,21 @@ async function initApp() {
 		`,
 		document.body,
 	);
+
+	// Get current window ID for filtering tab events
+	const currentWindow = await browserAPI.windows.getCurrent();
+	currentWindowId = currentWindow.id;
+
+	// Create port connection for lock management
+	port = browserAPI.runtime.connect({ name: `sidepanel:${currentWindowId}` });
+
+	// Handle messages from background
+	port.onMessage.addListener((msg) => {
+		if (msg.type === "close-yourself") {
+			// Keyboard shortcut toggle - close sidepanel
+			window.close();
+		}
+	});
 
 	// Request persistent storage
 	// if (storage.sessions) {
@@ -576,15 +621,48 @@ async function initApp() {
 	if (!sessionIdFromUrl && !isNewSession && storage.sessions) {
 		const latestSessionId = await storage.sessions.getLatestSessionId();
 		if (latestSessionId) {
-			sessionIdFromUrl = latestSessionId;
-			// Update URL to include the latest session
-			updateUrl(latestSessionId);
+			// Try to acquire lock for latest session
+			const lockResponse = await sendPortMessage<{ success: boolean }>({
+				type: "acquireLock",
+				sessionId: latestSessionId,
+				windowId: currentWindowId,
+			});
+
+			if (lockResponse?.success) {
+				sessionIdFromUrl = latestSessionId;
+				// Update URL to include the latest session
+				updateUrl(latestSessionId);
+			}
+			// If lock fails, fall through to create new session
 		}
 	}
 
 	if (sessionIdFromUrl && storage.sessions) {
 		const sessionData = await storage.sessions.loadSession(sessionIdFromUrl);
 		if (sessionData) {
+			// Try to acquire lock if we don't already have it (in case user navigated directly via URL)
+			const lockResponse = await sendPortMessage<{ success: boolean }>({
+				type: "acquireLock",
+				sessionId: sessionIdFromUrl,
+				windowId: currentWindowId,
+			});
+
+			if (!lockResponse?.success) {
+				// Session is locked in another window - show landing page instead
+				await createAgent();
+				if (agent) {
+					const welcomeMessage = createWelcomeMessage([
+						{ label: "What is Sitegeist?", prompt: "I'm not technical - walk me through what you can do step by step. Show me use cases like web scraping, automation, research, etc. by actually demonstrating them. Explain everything in detail as you go, and let's work together - you show something, explain it, then let me try. Don't be afraid to try creative things! But start with the basics." },
+						{ label: "Analyze YouTube Video", prompt: "Find the newest Veritasium video and summarize its beats. Give me timestamps for each beat. Then give me an executive summary for the whole video. Then collect the titles, links, likes and views of their last 20 videos and create a graph for liks and views." },
+						{ label: "Compare Prices", prompt: "Create skills for shop.billa.at and spar.at to search for products. Follow the skills workflow - break it down into small steps we test together: 1) Find search input field, add text, confirm with me the text is there. 2) Try submitting (enter key or button click), ask me if it worked. 3) Extract product name/packaging/price from results. 4) Page through results using UI. Iterate based on my feedback. Once each skill works, save it. Then use both skills to search for Mikado Schokolade and create an artifact comparing prices across both stores." },
+						{ label: "Research Profile", prompt: "Research Mario Zechner - all I know is that he does stuff with computers. Search Google to find his social media, academic history, professional work history, personal interests, passions, family life, birth date, contact details, location, news articles, and whatever else you can think of. Whatever page you find, read it in full. Add links so I can check sources. Create a profile artifact with what would work in a cold email and what to avoid. I need a personal hook, something he'll react to, not corporate slop." },
+					]);
+					agent.appendMessage(welcomeMessage);
+				}
+				renderApp();
+				return;
+			}
+
 			currentSessionId = sessionIdFromUrl;
 			const metadata = await storage.sessions.getMetadata(sessionIdFromUrl);
 			currentTitle = metadata?.title || "";
