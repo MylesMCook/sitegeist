@@ -5,45 +5,25 @@ import type {
 	SidepanelToBackgroundMessage,
 } from "./utils/port.js";
 
-// Cross-browser API compatibility
-// @ts-expect-error - browser global exists in Firefox, chrome in Chrome
-const browserAPI: typeof chrome & typeof browser =
-	(globalThis as any).browser || (globalThis as any).chrome;
-
-const isFirefox =
-	!!(globalThis as any).browser && !!(browserAPI as any).sidebarAction;
-
 function toggleSidePanel(tab?: chrome.tabs.Tab) {
-	if (isFirefox) {
-		// Use open(), not toggle() - toggle() doesn't exist in Firefox
-		(browserAPI as any).sidebarAction.open();
-	} else {
-		// Chrome needs a side panel declared in the manifest
-		const tabId = tab?.id;
-		if (tabId && (browserAPI as any).sidePanel?.open) {
-			(browserAPI as any).sidePanel.open({ tabId });
-		}
+	// Chrome needs a side panel declared in the manifest
+	const tabId = tab?.id;
+	if (tabId && chrome.sidePanel.open) {
+		chrome.sidePanel.open({ tabId });
 	}
 }
 
-if (isFirefox) {
-	// Firefox needs an `action` key in manifest.json
-	browserAPI.action?.onClicked.addListener(() => {
-		toggleSidePanel();
-	});
-} else {
-	// Chrome needs a side panel declared in the manifest
-	browserAPI.action.onClicked.addListener((tab: chrome.tabs.Tab) => {
-		toggleSidePanel(tab);
-	});
-}
+// Chrome needs a side panel declared in the manifest
+chrome.action.onClicked.addListener((tab: chrome.tabs.Tab) => {
+	toggleSidePanel(tab);
+});
 
 // Session lock manager - tracks which sessions are open in which windows
 const sessionLocks = new Map<string, number>(); // sessionId -> windowId
 const windowPorts = new Map<number, chrome.runtime.Port>(); // windowId -> port
 
 // Handle port connections from sidepanels
-browserAPI.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
+chrome.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
 	// Port name format: "sidepanel:${windowId}"
 	const match = /^sidepanel:(\d+)$/.exec(port.name);
 	if (!match) return;
@@ -61,20 +41,19 @@ browserAPI.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
 				ownerWindowId !== undefined && windowPorts.has(ownerWindowId);
 
 			// Grant lock if: no owner, owner port dead, or requesting window is owner
-			const response: LockResultMessage = !ownerWindowId ||
-				!ownerPortAlive ||
-				ownerWindowId === reqWindowId
-				? {
-					type: "lockResult",
-					sessionId,
-					success: true,
-				}
-				: {
-					type: "lockResult",
-					sessionId,
-					success: false,
-					ownerWindowId,
-				};
+			const response: LockResultMessage =
+				!ownerWindowId || !ownerPortAlive || ownerWindowId === reqWindowId
+					? {
+							type: "lockResult",
+							sessionId,
+							success: true,
+						}
+					: {
+							type: "lockResult",
+							sessionId,
+							success: false,
+							ownerWindowId,
+						};
 
 			if (response.success) {
 				sessionLocks.set(sessionId, reqWindowId);
@@ -106,7 +85,7 @@ browserAPI.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
 });
 
 // Clean up locks when entire window closes (belt-and-suspenders)
-browserAPI.windows.onRemoved.addListener((windowId: number) => {
+chrome.windows.onRemoved.addListener((windowId: number) => {
 	for (const [sessionId, lockWindowId] of sessionLocks.entries()) {
 		if (lockWindowId === windowId) {
 			sessionLocks.delete(sessionId);
@@ -116,39 +95,28 @@ browserAPI.windows.onRemoved.addListener((windowId: number) => {
 });
 
 // Handle keyboard shortcut - toggle sidepanel open/close
-if (browserAPI.commands) {
-	browserAPI.commands.onCommand.addListener((command: string) => {
-		if (command === "toggle-sidepanel") {
-			if (isFirefox) {
-				// Firefox: just toggle the sidebar
-				toggleSidePanel();
+chrome.commands.onCommand.addListener((command: string) => {
+	if (command === "toggle-sidepanel") {
+		// Chrome: check if sidepanel is open via port existence
+		// Use callback style - async/await doesn't work in keyboard shortcut context
+		chrome.windows.getCurrent((w: chrome.windows.Window) => {
+			if (!w?.id) return;
+
+			const port = windowPorts.get(w.id);
+			if (port) {
+				// Sidepanel is open - tell it to close itself
+				try {
+					const closeMessage: CloseYourselfMessage = {
+						type: "close-yourself",
+					};
+					port.postMessage(closeMessage);
+				} catch {
+					// Port already disconnected
+				}
 			} else {
-				// Chrome: check if sidepanel is open via port existence
-				// Use callback style - async/await doesn't work in keyboard shortcut context
-				browserAPI.windows.getCurrent((w: chrome.windows.Window) => {
-					if (!w?.id) return;
-
-					const port = windowPorts.get(w.id);
-					if (port) {
-						// Sidepanel is open - tell it to close itself
-						try {
-							const closeMessage: CloseYourselfMessage = { type: "close-yourself" };
-							port.postMessage(closeMessage);
-						} catch {
-							// Port already disconnected
-						}
-					} else {
-						// Sidepanel is closed - open it
-						if ((browserAPI as any).sidePanel?.open) {
-							(browserAPI as any).sidePanel.open({ windowId: w.id });
-						}
-					}
-				});
+				// Sidepanel is closed - open it
+				chrome.sidePanel.open({ windowId: w.id });
 			}
-		}
-	});
-} else {
-	console.error("browserAPI.commands not available");
-}
-
-export {};
+		});
+	}
+});

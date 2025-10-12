@@ -172,25 +172,8 @@ function disconnect(): void {
  */
 export async function sendMessage<TRequest extends SidepanelToBackgroundMessage>(
 	message: TRequest,
-	timeoutMs?: number,
-): Promise<ResponseForRequest<TRequest>>;
-
-/**
- * Send a fire-and-forget message through the port (no response expected).
- *
- * @param message - Message to send to background script
- * @returns Promise resolving when message is sent
- */
-export async function sendMessage(
-	message: SidepanelToBackgroundMessage,
-): Promise<void>;
-
-// Implementation
-export async function sendMessage<TRequest extends SidepanelToBackgroundMessage>(
-	message: SidepanelToBackgroundMessage,
 	timeoutMs = 5000,
-	// biome-ignore lint/suspicious/noExplicitAny: return type determined by overload signatures
-): Promise<any> {
+): Promise<ResponseForRequest<TRequest>> {
 	for (let attempt = 1; attempt <= 2; attempt++) {
 		// Ensure we have a port connection
 		if (!port) {
@@ -205,33 +188,30 @@ export async function sendMessage<TRequest extends SidepanelToBackgroundMessage>
 		try {
 			// Determine expected response type from request type
 			const responseType = REQUEST_TO_RESPONSE_TYPE[message.type];
-
-			// Set up response handler if expecting a response
-			let responsePromise: Promise<BackgroundToSidepanelMessage> | undefined;
-			if (responseType) {
-				responsePromise = new Promise<BackgroundToSidepanelMessage>((resolve, reject) => {
-					const timeoutId = setTimeout(() => {
-						responseHandlers.delete(responseType);
-						reject(new Error(`[Port] Timeout waiting for response: ${responseType}`));
-					}, timeoutMs);
-
-					responseHandlers.set(responseType, (msg: BackgroundToSidepanelMessage) => {
-						clearTimeout(timeoutId);
-						responseHandlers.delete(responseType);
-						resolve(msg);
-					});
-				});
+			if (!responseType) {
+				throw new Error(`[Port] No response type mapping for message type: ${message.type}`);
 			}
+
+			// Set up response handler (all messages expect a response)
+			const responsePromise = new Promise<BackgroundToSidepanelMessage>((resolve, reject) => {
+				const timeoutId = setTimeout(() => {
+					responseHandlers.delete(responseType);
+					reject(new Error(`[Port] Timeout waiting for response: ${responseType}`));
+				}, timeoutMs);
+
+				responseHandlers.set(responseType, (msg: BackgroundToSidepanelMessage) => {
+					clearTimeout(timeoutId);
+					responseHandlers.delete(responseType);
+					resolve(msg);
+				});
+			});
 
 			// Try to send the message
 			// This can throw if port disconnected between our check and this call
 			port.postMessage(message);
 
-			// Wait for response if needed
-			if (responsePromise) {
-				return (await responsePromise) as ResponseForRequest<TRequest>;
-			}
-			return;
+			// Wait for response
+			return (await responsePromise) as ResponseForRequest<TRequest>;
 		} catch (err) {
 			// Determine expected response type from request type for cleanup
 			const responseType = REQUEST_TO_RESPONSE_TYPE[message.type];
@@ -251,6 +231,9 @@ export async function sendMessage<TRequest extends SidepanelToBackgroundMessage>
 			disconnect();
 		}
 	}
+
+	// TypeScript: This should never be reached (we throw on attempt 2 in catch block)
+	throw new Error("[Port] Failed to send message: max attempts exceeded");
 }
 
 /**
