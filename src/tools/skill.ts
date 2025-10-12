@@ -431,19 +431,38 @@ export const skillRenderer: ToolRenderer<SkillParams, SkillResultDetails> = {
 			</div>
 		`;
 
+		// Helper to render header text with inline skill pill
+		const renderHeaderWithPill = (labelText: string, skillName?: string, skill?: Partial<Skill>): TemplateResult => {
+			if (skillName && skill) {
+				// Create full Skill object for pill
+				const fullSkill: Skill = {
+					name: skillName,
+					domainPatterns: skill.domainPatterns || [],
+					shortDescription: skill.shortDescription || "",
+					description: skill.description || "",
+					examples: skill.examples || "",
+					library: skill.library || "",
+					createdAt: skill.createdAt || "",
+					lastUpdated: skill.lastUpdated || "",
+				};
+				return html`<span>${labelText} ${SkillPill(fullSkill, true)}</span>`;
+			}
+			return html`<span>${labelText}</span>`;
+		};
+
 		// Helper to render skill fields (used by create/update/get)
 		const renderSkillFields = (
 			skill: Partial<Skill>,
 			showLibrary: boolean,
 		) => html`
 			${skill.domainPatterns?.length ? renderDomainPills(skill.domainPatterns) : ""}
-			${skill.shortDescription ? html`<div class="text-sm text-muted-foreground">${skill.shortDescription}</div>` : ""}
-			${skill.description ? html`<markdown-block .content=${skill.description}></markdown-block>` : ""}
+			${skill.shortDescription ? html`<div class="text-sm text-muted-foreground mt-3">${skill.shortDescription}</div>` : ""}
+			${skill.description ? html`<div class="mt-3"><markdown-block .content=${skill.description}></markdown-block></div>` : ""}
 			${
 				skill.examples
 					? html`
-				<div class="space-y-2">
-					<div class="text-sm font-medium text-muted-foreground">${i18n("Examples")}</div>
+				<div class="mt-3">
+					<div class="text-sm font-medium text-muted-foreground mb-2">${i18n("Examples")}</div>
 					<code-block .code=${skill.examples} language="javascript"></code-block>
 				</div>
 			`
@@ -452,8 +471,8 @@ export const skillRenderer: ToolRenderer<SkillParams, SkillResultDetails> = {
 			${
 				showLibrary && skill.library
 					? html`
-				<div class="space-y-2">
-					<div class="text-sm font-medium text-muted-foreground">${i18n("Library")}</div>
+				<div class="mt-3">
+					<div class="text-sm font-medium text-muted-foreground mb-2">${i18n("Library")}</div>
 					<code-block .code=${skill.library} language="javascript"></code-block>
 				</div>
 			`
@@ -480,10 +499,11 @@ export const skillRenderer: ToolRenderer<SkillParams, SkillResultDetails> = {
 			if ((action === "create" || action === "update") && params?.data) {
 				const contentRef = createRef<HTMLElement>();
 				const chevronRef = createRef<HTMLElement>();
+				const skillName = params?.data?.name;
 
 				return {content: html`
 					<div>
-						${renderCollapsibleHeader(state, Sparkles, headerText, contentRef, chevronRef, false)}
+						${renderCollapsibleHeader(state, Sparkles, skillName ? renderHeaderWithPill(headerText, skillName, params.data) : headerText, contentRef, chevronRef, false)}
 						<div ${ref(contentRef)} class="overflow-hidden transition-all duration-200 ease-in-out max-h-0 space-y-3">
 							${renderSkillFields(params.data, true)}
 							<div class="w-full px-3 py-2 text-sm text-destructive bg-destructive/10 border border-destructive rounded">
@@ -572,7 +592,7 @@ export const skillRenderer: ToolRenderer<SkillParams, SkillResultDetails> = {
 						return {content: renderHeader(state, Sparkles, i18n("Processing skill...")), isCustom: false };
 					}
 
-					const headerText =
+					const labelText =
 						action === "create"
 							? state === "complete"
 								? i18n("Created skill")
@@ -586,7 +606,7 @@ export const skillRenderer: ToolRenderer<SkillParams, SkillResultDetails> = {
 
 					return {content: html`
 						<div>
-							${renderCollapsibleHeader(state, Sparkles, headerText, contentRef, chevronRef, false)}
+							${renderCollapsibleHeader(state, Sparkles, renderHeaderWithPill(labelText, skillName, skillData), contentRef, chevronRef, false)}
 							<div ${ref(contentRef)} class="overflow-hidden transition-all duration-200 ease-in-out max-h-0">
 								${renderSkillFields(skillData, true)}
 							</div>
@@ -633,14 +653,14 @@ export const skillRenderer: ToolRenderer<SkillParams, SkillResultDetails> = {
 						create: i18n("Creating skill"),
 						update: i18n("Updating skill"),
 					};
-					const headerText = `${labels[action]} ${skillName}`;
+					const labelText = labels[action];
 
 					const contentRef = createRef<HTMLElement>();
 					const chevronRef = createRef<HTMLElement>();
 
 					return {content: html`
 						<div>
-							${renderCollapsibleHeader(state, Sparkles, headerText, contentRef, chevronRef, false)}
+							${renderCollapsibleHeader(state, Sparkles, renderHeaderWithPill(labelText, skillName, data), contentRef, chevronRef, false)}
 							<div ${ref(contentRef)} class="overflow-hidden transition-all duration-200 ease-in-out max-h-0">
 								${data ? renderSkillFields(data, true) : ""}
 							</div>
