@@ -11,22 +11,15 @@ const browser = globalThis.browser || globalThis.chrome;
 // ============================================================================
 
 const debuggerSchema = Type.Object({
-	method: Type.String({
-		description:
-			"Chrome DevTools Protocol method (e.g., 'Runtime.evaluate', 'DOM.getDocument', 'Network.getAllCookies', 'Console.enable')",
+	code: Type.String({
+		description: "JavaScript code to execute in MAIN world context",
 	}),
-	params: Type.Optional(
-		Type.Record(Type.String(), Type.Any(), {
-			description: "Parameters for the CDP method as key-value pairs",
-		}),
-	),
 });
 
 export type DebuggerParams = Static<typeof debuggerSchema>;
 
 export interface DebuggerResult {
-	result: any;
-	exceptionDetails?: any;
+	value: any;
 }
 
 // ============================================================================
@@ -36,26 +29,23 @@ export interface DebuggerResult {
 export class DebuggerTool implements AgentTool<typeof debuggerSchema, DebuggerResult> {
 	label = "Debugger";
 	name = "debugger";
-	description = `Execute code in the MAIN JavaScript world (not USER_SCRIPT) to access things browser_javascript cannot.
+	description = `Execute JavaScript in the MAIN world (not USER_SCRIPT) to access things browser_javascript cannot.
 
 USE CASES (what browser_javascript CANNOT access):
 - Page's own JavaScript variables, functions, framework instances (React, Vue, Angular state)
 - window properties set by page scripts
 - Cookies via document.cookie
-- All other MAIN world page internals that USER_SCRIPT world cannot see
-
-MOST COMMON USAGE - Runtime.evaluate in MAIN context:
-{ method: "Runtime.evaluate", params: { expression: "yourJavaScriptCode", returnByValue: true } }
+- All other MAIN world internals that USER_SCRIPT world cannot see
 
 Examples:
-1. Get cookies: { method: "Runtime.evaluate", params: { expression: "document.cookie", returnByValue: true } }
-2. Access React state: { method: "Runtime.evaluate", params: { expression: "window.myApp.state", returnByValue: true } }
-3. Call page function: { method: "Runtime.evaluate", params: { expression: "window.myFunction()", returnByValue: true } }
-4. Get framework instance: { method: "Runtime.evaluate", params: { expression: "angular.element(document.body).scope()", returnByValue: true } }
+{ code: "document.cookie" } - Get cookies
+{ code: "window.myApp.state" } - Access app state
+{ code: "window.myFunction()" } - Call page function
+{ code: "JSON.stringify(localStorage)" } - Get localStorage
 
-Returns raw CDP response. Use returnByValue: true to get actual values instead of object references.
+Returns the evaluated result as JSON/text.
 
-CRITICAL: This runs in MAIN world, not USER_SCRIPT. Use browser_javascript for DOM manipulation - use this ONLY for accessing MAIN world internals.`;
+CRITICAL: Use browser_javascript for DOM manipulation. Use this ONLY for MAIN world access.`;
 	parameters = debuggerSchema;
 
 	constructor(private agent: Agent) {}
@@ -90,50 +80,39 @@ CRITICAL: This runs in MAIN world, not USER_SCRIPT. Use browser_javascript for D
 				}
 			}
 
-			// Send CDP command
-			const result = await browser.debugger.sendCommand({ tabId: tab.id }, args.method, args.params || {});
+			// Execute code in MAIN world using Runtime.evaluate with returnByValue
+			const result = await browser.debugger.sendCommand(
+				{ tabId: tab.id },
+				"Runtime.evaluate",
+				{
+					expression: args.code,
+					returnByValue: true,
+				},
+			);
 
-			const details: DebuggerResult = {
-				result,
-			};
-
-			// Format output based on result type
-			let output = `Executed: ${args.method}\n`;
-
+			// Check for exceptions
 			if (result.exceptionDetails) {
-				details.exceptionDetails = result.exceptionDetails;
-				output += `Exception: ${result.exceptionDetails.text}\n`;
-				if (result.exceptionDetails.exception?.description) {
-					output += `Details: ${result.exceptionDetails.exception.description}\n`;
-				}
-			} else if (result.result) {
-				// Runtime.evaluate result
-				if (result.result.type === "string" || result.result.type === "number" || result.result.type === "boolean") {
-					output += `Result (${result.result.type}): ${result.result.value}\n`;
-				} else if (result.result.value !== undefined) {
-					output += `Result: ${JSON.stringify(result.result.value, null, 2)}\n`;
-				} else {
-					output += `Result: ${JSON.stringify(result, null, 2)}\n`;
-				}
-			} else if (result.root) {
-				// DOM.getDocument result
-				output += `DOM tree received (nodeId: ${result.root.nodeId})\n`;
-				output += `Root: ${result.root.nodeName} (${result.root.childNodeCount} children)\n`;
-			} else if (result.cookies) {
-				// Network cookies result
-				output += `Found ${result.cookies.length} cookies\n`;
+				const error = result.exceptionDetails.exception?.description || result.exceptionDetails.text || "Unknown error";
+				throw new Error(`MAIN world execution failed: ${error}`);
+			}
+
+			// Extract the actual value
+			const value = result.result?.value;
+			const details: DebuggerResult = { value };
+
+			// Format output
+			let output = "";
+			if (value === undefined) {
+				output = "undefined";
+			} else if (typeof value === "string") {
+				output = value;
 			} else {
-				// Generic result
-				output += `Result: ${JSON.stringify(result, null, 2)}\n`;
+				output = JSON.stringify(value, null, 2);
 			}
 
 			return { output, details };
 		} catch (error: any) {
 			throw new Error(`Debugger error: ${error.message}`);
-		} finally {
-			// Optionally detach debugger after command
-			// For now, keep it attached for performance (avoid reattaching)
-			// Detach manually if needed via { method: "Debugger.disable" }
 		}
 	}
 }
