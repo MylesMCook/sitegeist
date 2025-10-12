@@ -1,12 +1,9 @@
 import type {
-	AcquireLockMessage,
-	BackgroundToSidepanelMessage,
 	CloseYourselfMessage,
-	GetLockedSessionsMessage,
 	LockedSessionsMessage,
 	LockResultMessage,
 	SidepanelToBackgroundMessage,
-} from "./port.js";
+} from "./utils/port.js";
 
 // Cross-browser API compatibility
 // @ts-expect-error - browser global exists in Firefox, chrome in Chrome

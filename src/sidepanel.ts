@@ -1,7 +1,6 @@
 import { Button, Input, icon } from "@mariozechner/mini-lit";
 import "@mariozechner/mini-lit/dist/ThemeToggle.js";
 import { type AgentTool, getModel } from "@mariozechner/pi-ai";
-import * as port from "./port.js";
 import {
 	Agent,
 	type AgentState,
@@ -34,137 +33,17 @@ import {
 } from "./messages/WelcomeMessage.js";
 import { SYSTEM_PROMPT } from "./prompts/tool-prompts.js";
 import { SitegeistAppStorage } from "./storage/app-storage.js";
+import { DebuggerTool } from "./tools/debugger.js";
 import { BrowserJavaScriptTool, skillTool } from "./tools/index.js";
 import { isToolNavigating, NavigateTool } from "./tools/navigate.js";
-import { DebuggerTool } from "./tools/debugger.js";
+import * as port from "./utils/port.js";
 import "./utils/i18n-extension.js";
 import "./utils/live-reload.js";
-
-const welcomeMessages = [
-	{
-		label: "What is Sitegeist?",
-		prompt: `You are about to help a non-technical user understand Sitegeist through an interactive tutorial. Guide them step-by-step through Sitegeist's capabilities.
-
-**CRITICAL RULES:**
-- Keep explanations SHORT (2-3 sentences max)
-- After EACH step, STOP and wait for them to say continue
-- When clicking or typing, ALWAYS scroll element into view first
-- Never move to next step until they confirm
-
-**START:** First tell them to drag this panel wider by its left edge to see outputs better. STOP and wait for them to confirm.
-
-**PHASE 1: Browse & Extract**
-Step 1: Navigate to google.com, explain what happened. STOP.
-Step 2: Type "chocolate chip cookie recipe" in search box, tell them what happened, ask if they see it. STOP.
-Step 3: Click search button, explain. STOP.
-Step 4: Extract top results using your google search skill (don't explain skills yet), show them the results. STOP.
-
-Then ask if they're ready for Phase 2. STOP.
-
-**PHASE 2: Multi-Step Automation**
-Step 1: Explain that recipe sites are awful (ads everywhere) and manually compiling recipes is tedious. I can navigate multiple sites, collect info, and output clean documents (markdown, PDF, Word, HTML). You'll demonstrate by collecting 2 recipes from top results. STOP.
-Step 2: Wait for their go-ahead, then visit 2 recipe sites, extract data from each, create a markdown artifact with both recipes formatted nicely. Explain each step as you go. STOP.
-
-Then ask if they're ready for Phase 3. STOP.
-
-**PHASE 3: Output Formats**
-Step 1: Explain that now you have the recipe data, you can output in any format they want. STOP.
-Step 2: Create artifacts in this order, explaining each after creation:
-- Markdown (already done)
-- PDF version (STOP after creating)
-- Word document version (STOP after creating)
-- Interactive HTML with ingredient calculator for each recipe (they can input how many cookies they want, ingredients scale automatically) (STOP after creating)
-Step 3: After all artifacts, explain that markdown/HTML are best for iterative work since you can update them fastest (unlike PDF/Word which must be regenerated). STOP.
-
-Then ask if they're ready for Phase 4. STOP.
-
-**PHASE 4: Skills**
-Step 1: Explain that doing everything ad-hoc works but is slow. Better to teach you about a site collaboratively, then save that knowledge as a "skill". Next time that site is visited, you instantly know how to interact with it. (Give relatable example like: "Instead of figuring out Amazon's search every time, a skill remembers it"). STOP.
-Step 2: Demo an existing skill - the YouTube skill. Search for latest Veritasium video, get transcript using YouTube skill, create markdown with video beats (each beat: title, start/end timestamp, summary). STOP.
-
-Then ask if they're ready for Phase 5. STOP.
-
-**PHASE 5: Sky's the Limit**
-Explain that this is just scratching the surface. I can:
-- Research topics/companies/people and compile living dossiers
-- Automate form filling across multiple sites
-- Monitor prices and track changes over time
-- Extract data from dozens of pages automatically
-- Combine data from multiple sources into custom reports
-
-STOP.
-
-**File Attachments:**
-Explain: "I currently can't see images on web pages, but you can attach files to our chat that I can read and work with. This is useful for showing me what you see on a page - just take a screenshot and attach it!"
-
-List what you can work with:
-- **Images/Screenshots**: See what's on your screen, extract text (OCR), describe content, guide interactions
-- **PDFs, Word, Excel**: Read, extract data, cross-reference with web data
-- **Code files**: Analyze any text-based files
-
-Tell them: "Use the attachment button in the chat input to attach files."
-
-STOP.
-
-**Interface Overview:**
-Explain the UI elements:
-
-**Header (top, left to right):**
-- Session history icon → Find and resume old chat sessions
-- New session icon → Start fresh
-- Session title field → Click to rename the current session
-- Theme toggle → Switch between system/light/dark theme
-- Settings icon → Configure API keys, skills, proxy settings
-
-**Message Editor (bottom):**
-- Attachment icon → Attach files to chat
-- Thinking settings (if model supports it) → Off/minimal/low/medium/high. When on, I think before acting, which improves results but takes longer and costs more
-- Model selector → Pick different AI models. If you have Ollama running locally (https://ollama.com), you can select from your local models, so everything is truly local
-- Submit/Stop button → Send message or stop me (can also press ESCAPE key while focused on message editor)
-
-STOP.
-
-**Data Privacy:**
-Explain where data is stored and who gets what:
-- **Settings & API keys**: Stored locally on your computer only
-- **Sessions & attachments**: Stored locally on your computer only
-- **When you send messages**: All text and attachments in the chat session are sent to the LLM provider (default: Anthropic). They're configured to not retain your data or use it for training
-- **CORS proxy** (off by default): If enabled in settings, requests to the LLM go through the proxy. Default is corsproxy.io which does not retain or log data
-
-STOP.
-
-Ask what they'd like to try or explore next.`,
-	},
-	{
-		label: "Research Profile",
-		prompt:
-			"Research Mario Zechner - all I know is that he does stuff with computers. Search Google to find his social media, academic history, professional work history, personal interests, passions, family life, birth date, contact details, location, news articles, and whatever else you can think of. Whatever page you find, read it in full. Add links so I can check sources. Create a profile artifact with what would work in a cold email and what to avoid. I need a personal hook, something he'll react to, not corporate slop.",
-	},
-	{
-		label: "Analyze YouTube Video",
-		prompt:
-			"Find the newest Veritasium video. Identify beats and their start and end timestamp, and summarize each beat. Then give me an executive summary for the whole video. Finally, ask me if i want to jump to a specific beat or if I want an explanation what's currently being said in the video.",
-	},
-	{
-		label: "Compare Prices",
-		prompt:
-			"Create skills for shop.billa.at and spar.at to search for products. Follow the skills workflow - break it down into small steps we test together: 1) Find search input field, add text, and confirm with me the text is there. Use 'Schokolade' as the search term, so we get many results later when we try to figure out paging. 2) Try submitting (enter key or button click), and ask me if it worked. 3) Extract product name/image URL/packaging/price from results. 4) Page through results using UI. Iterate based on my feedback. Once each skill works, save it. Then use both skills to search for Mikado and create an artifact comparing prices across both stores.",
-	},
-];
+import type { AgentEvent } from "../../pi-mono/packages/web-ui/dist/agent/agent.js";
+import { tutorials } from "./tutorials.js";
 
 // Register custom message renderers
 registerNavigationRenderer();
-
-// Cross-browser API compatibility
-// @ts-expect-error - browser global exists in Firefox, chrome in Chrome
-const browserAPI = globalThis.browser || globalThis.chrome;
-
-// Get sandbox URL for extension CSP restrictions
-const getSandboxUrl = () => {
-	return browserAPI.runtime.getURL("sandbox.html");
-};
-
-const systemPrompt = SYSTEM_PROMPT;
 
 // ============================================================================
 // STORAGE SETUP
@@ -183,97 +62,9 @@ let chatPanel: ChatPanel;
 let agentUnsubscribe: (() => void) | undefined;
 let currentWindowId: number;
 
-// Debug function to dump session metadata
-(window as any).dumpSessionMetadata = async () => {
-	const metadata = await storage.sessions.getAllMetadata();
-	console.log("=== SESSION METADATA ===");
-	console.log("Total sessions:", metadata.length);
-	console.table(
-		metadata.map((m) => ({
-			id: m.id,
-			title: m.title,
-			lastModified: m.lastModified,
-			createdAt: m.createdAt,
-			messageCount: m.messageCount,
-			totalCost: m.usage.cost.total,
-		})),
-	);
-	return metadata;
-};
-
-// One-time migration: recalculate usage for all sessions
-(window as any).migrateSessionUsage = async () => {
-	const metadata = await storage.sessions.getAllMetadata();
-	console.log(`Migrating ${metadata.length} sessions...`);
-
-	let migrated = 0;
-	for (const meta of metadata) {
-		try {
-			const session = await storage.sessions.get(meta.id);
-			if (!session) continue;
-
-			// Recalculate usage
-			const usage = {
-				input: 0,
-				output: 0,
-				cacheRead: 0,
-				cacheWrite: 0,
-				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-			};
-
-			for (const msg of session.messages) {
-				if (msg.role === "assistant" && "usage" in msg && msg.usage) {
-					usage.input += msg.usage.input || 0;
-					usage.output += msg.usage.output || 0;
-					usage.cacheRead += msg.usage.cacheRead || 0;
-					usage.cacheWrite += msg.usage.cacheWrite || 0;
-					if (msg.usage.cost) {
-						usage.cost.input += msg.usage.cost.input || 0;
-						usage.cost.output += msg.usage.cost.output || 0;
-						usage.cost.cacheRead += msg.usage.cost.cacheRead || 0;
-						usage.cost.cacheWrite += msg.usage.cost.cacheWrite || 0;
-						usage.cost.total += msg.usage.cost.total || 0;
-					}
-				}
-			}
-
-			// Generate preview
-			let preview = "";
-			for (const msg of session.messages) {
-				if (preview.length >= 2048) break;
-				if (msg.role === "user") {
-					const text =
-						typeof msg.content === "string"
-							? msg.content
-							: (msg.content.find((c: any) => c.type === "text") as any)?.text || "";
-					preview += text + "\n";
-				} else if (msg.role === "assistant" && "content" in msg) {
-					const text = (msg.content.find((c: any) => c.type === "text") as any)?.text || "";
-					preview += text + "\n";
-				}
-			}
-			preview = preview.substring(0, 2048);
-
-			const updatedMetadata = {
-				...meta,
-				usage,
-				preview,
-			};
-
-			await storage.sessions.saveSession(session.id, session, updatedMetadata, session.title);
-			migrated++;
-		} catch (err) {
-			console.error(`Failed to migrate session ${meta.id}:`, err);
-		}
-	}
-
-	console.log(`✅ Migrated ${migrated}/${metadata.length} sessions`);
-};
-
 // ============================================================================
 // HELPERS
 // ============================================================================
-
 const generateTitle = (messages: AppMessage[]): string => {
 	const firstUserMsg = messages.find((m) => m.role === "user");
 	if (!firstUserMsg || firstUserMsg.role !== "user") return "";
@@ -284,8 +75,8 @@ const generateTitle = (messages: AppMessage[]): string => {
 	if (typeof content === "string") {
 		text = content;
 	} else {
-		const textBlocks = content.filter((c: any) => c.type === "text");
-		text = textBlocks.map((c: any) => c.text || "").join(" ");
+		const textBlocks = content.filter((c) => c.type === "text");
+		text = textBlocks.map((c) => c.text || "").join(" ");
 	}
 
 	text = text.trim();
@@ -299,8 +90,10 @@ const generateTitle = (messages: AppMessage[]): string => {
 };
 
 const shouldSaveSession = (messages: AppMessage[]): boolean => {
-	const hasUserMsg = messages.some((m: any) => m.role === "user");
-	const hasAssistantMsg = messages.some((m: any) => m.role === "assistant");
+	const hasUserMsg = messages.some((m: AppMessage) => m.role === "user");
+	const hasAssistantMsg = messages.some(
+		(m: AppMessage) => m.role === "assistant",
+	);
 	return hasUserMsg && hasAssistantMsg;
 };
 
@@ -321,17 +114,17 @@ const saveSession = async () => {
 		};
 
 		for (const msg of state.messages) {
-			if (msg.role === "assistant" && "usage" in msg && msg.usage) {
-				usage.input += msg.usage.input || 0;
-				usage.output += msg.usage.output || 0;
-				usage.cacheRead += msg.usage.cacheRead || 0;
-				usage.cacheWrite += msg.usage.cacheWrite || 0;
+			if (msg.role === "assistant") {
+				usage.input += msg.usage.input;
+				usage.output += msg.usage.output;
+				usage.cacheRead += msg.usage.cacheRead;
+				usage.cacheWrite += msg.usage.cacheWrite;
 				if (msg.usage.cost) {
-					usage.cost.input += msg.usage.cost.input || 0;
-					usage.cost.output += msg.usage.cost.output || 0;
-					usage.cost.cacheRead += msg.usage.cost.cacheRead || 0;
-					usage.cost.cacheWrite += msg.usage.cost.cacheWrite || 0;
-					usage.cost.total += msg.usage.cost.total || 0;
+					usage.cost.input += msg.usage.cost.input;
+					usage.cost.output += msg.usage.cost.output;
+					usage.cost.cacheRead += msg.usage.cost.cacheRead;
+					usage.cost.cacheWrite += msg.usage.cost.cacheWrite;
+					usage.cost.total += msg.usage.cost.total;
 				}
 			}
 		}
@@ -344,17 +137,24 @@ const saveSession = async () => {
 				const text =
 					typeof msg.content === "string"
 						? msg.content
-						: (msg.content.find((c: any) => c.type === "text") as any)?.text || "";
-				preview += text + "\n";
-			} else if (msg.role === "assistant" && "content" in msg) {
-				const text = (msg.content.find((c: any) => c.type === "text") as any)?.text || "";
-				preview += text + "\n";
+						: msg.content
+								.filter((c) => c.type === "text")
+								.map((c) => c.text)
+								.join("\n") || "";
+				preview += `${text}\n`;
+			} else if (msg.role === "assistant") {
+				const text = msg.content
+					.filter((c) => c.type === "text" || c.type === "thinking")
+					.map((c) => (c.type === "text" ? c.text : c.thinking))
+					.join("\n");
+				preview += `${text}\n`;
 			}
 		}
 		preview = preview.substring(0, 2048);
 
 		// Preserve createdAt if session already exists
-		const existingMetadata = await storage.sessions.getMetadata(currentSessionId);
+		const existingMetadata =
+			await storage.sessions.getMetadata(currentSessionId);
 		const createdAt = existingMetadata?.createdAt || new Date().toISOString();
 
 		const metadata = {
@@ -395,7 +195,7 @@ const createAgent = async (
 	}
 
 	// Load debugger mode setting
-	const stored = await browserAPI.storage.local.get("debuggerMode");
+	const stored = await chrome.storage.local.get("debuggerMode");
 	const debuggerModeEnabled = stored.debuggerMode || false;
 
 	// Load CORS proxy settings for extract_document tool
@@ -406,7 +206,7 @@ const createAgent = async (
 
 	agent = new Agent({
 		initialState: initialState || {
-			systemPrompt,
+			systemPrompt: SYSTEM_PROMPT,
 			model: getModel("anthropic", "claude-sonnet-4-5-20250929"),
 			thinkingLevel: "off",
 			messages: [],
@@ -417,7 +217,7 @@ const createAgent = async (
 	});
 
 	if (shouldSave) {
-		agentUnsubscribe = agent.subscribe((event: any) => {
+		agentUnsubscribe = agent.subscribe((event: AgentEvent) => {
 			if (event.type === "state-update") {
 				const messages = event.state.messages;
 
@@ -429,24 +229,23 @@ const createAgent = async (
 				// Create session ID on first successful save
 				if (!currentSessionId && shouldSaveSession(messages)) {
 					currentSessionId = crypto.randomUUID();
-					updateUrl(currentSessionId);
 
 					// Acquire lock for newly created session
-					port.sendMessage(
-						{
+					port
+						.sendMessage({
 							type: "acquireLock",
 							sessionId: currentSessionId,
 							windowId: currentWindowId,
-						},
-						"lockResult",
-					).then((lockResponse: any) => {
-						if (!lockResponse.success) {
-							console.warn(
-								"Failed to acquire lock for newly created session",
-								currentSessionId,
-							);
-						}
-					});
+						})
+						.then((lockResponse) => {
+							if (!lockResponse.success) {
+								console.warn(
+									"Failed to acquire lock for newly created session",
+									currentSessionId,
+								);
+							}
+						});
+					updateUrl(currentSessionId);
 				}
 
 				// Auto-save
@@ -455,34 +254,14 @@ const createAgent = async (
 				}
 
 				renderApp();
-			} else if (event.type === "completed") {
-				// Check if last assistant message has empty content - if so, auto-continue
-				const messages = agent.state.messages;
-				const lastMessage = messages[messages.length - 1];
-
-				// TODO this if cfucked, need to find a better way.
-				/*if (lastMessage?.role === "assistant" && Array.isArray(lastMessage.content) && lastMessage.content.length === 0) {
-					console.log("Empty assistant response detected - auto-continuing");
-
-					// Remove the empty assistant message
-					agent.state.messages.pop();
-
-					// Append a ContinueMessage (invisible to user, converted to "continue" prompt in transformer)
-					console.log("Injecting ContinueMessage to prompt LLM to continue");
-					agent.appendMessage({
-						type: "continue",
-						role: "user",
-					} as any);
-
-					// Trigger the agent to continue with empty prompt (will use ContinueMessage)
-					agent.prompt("");
-				}*/
 			}
 		});
 	}
 
 	await chatPanel.setAgent(agent, {
-		sandboxUrlProvider: getSandboxUrl,
+		sandboxUrlProvider: () => {
+			return chrome.runtime.getURL("sandbox.html");
+		},
 		onApiKeyRequired: async (provider: string) => {
 			return await ApiKeyPromptDialog.prompt(provider);
 		},
@@ -490,7 +269,7 @@ const createAgent = async (
 			if (!agent) return;
 
 			// Get current tab info
-			const [tab] = await browserAPI.tabs.query({
+			const [tab] = await chrome.tabs.query({
 				active: true,
 				currentWindow: true,
 			});
@@ -534,7 +313,13 @@ const createAgent = async (
 				extractDocumentTool.corsProxyUrl = `${corsProxyUrl}/?`;
 			}
 
-			const tools: AgentTool<any, any>[] = [navigateTool, browserJavaScriptTool, skillTool, extractDocumentTool];
+			// biome-ignore lint/suspicious/noExplicitAny: fine
+			const tools: AgentTool<any, any>[] = [
+				navigateTool,
+				browserJavaScriptTool,
+				skillTool,
+				extractDocumentTool,
+			];
 
 			// Conditionally add debugger tool if enabled
 			if (debuggerModeEnabled) {
@@ -784,8 +569,71 @@ window.addEventListener("keydown", (e) => {
 	}
 });
 
-// Note: Lock cleanup handled automatically by port disconnect on close/navigation/crash
-// No manual beforeunload handler needed - port.onDisconnect does it all
+// ============================================================================
+// TEST STEPS FROM DEBUGGER.TS
+// ============================================================================
+async function testSteps(): Promise<boolean> {
+	const urlParams = new URLSearchParams(window.location.search);
+	const testStepsParam = urlParams.get("teststeps");
+	const testProvider = urlParams.get("provider");
+	const testModel = urlParams.get("model");
+
+	if (!testStepsParam) return false;
+
+	// Handle test prompts - create temporary session without saving
+	try {
+		const testSteps = JSON.parse(
+			decodeURIComponent(testStepsParam),
+		) as string[];
+
+		// Set model if specified
+		let initialState: Partial<AgentState> | undefined;
+		if (testProvider && testModel) {
+			// biome-ignore lint/suspicious/noExplicitAny: fine
+			const model = getModel(testProvider as any, testModel);
+			if (model) {
+				initialState = {
+					systemPrompt: SYSTEM_PROMPT,
+					model,
+				};
+			}
+		}
+
+		await createAgent(initialState, false);
+		renderApp();
+
+		// Wait for UI to render
+		await new Promise((resolve) => requestAnimationFrame(resolve));
+
+		// Submit prompts sequentially
+		for (let i = 0; i < testSteps.length; i++) {
+			const step = testSteps[i];
+			if (!chatPanel?.agentInterface) break;
+
+			// Send the prompt
+			await chatPanel.agentInterface.sendMessage(step);
+
+			// Wait for agent to finish (not streaming anymore)
+			if (i < testSteps.length - 1) {
+				// Wait for response to complete before sending next step
+				await new Promise<void>((resolve) => {
+					const checkComplete = () => {
+						if (!chatPanel.agent?.state.isStreaming) {
+							resolve();
+						} else {
+							setTimeout(checkComplete, 100);
+						}
+					};
+					checkComplete();
+				});
+			}
+		}
+		return true;
+	} catch (err) {
+		console.error("Failed to run test steps:", err);
+		return false;
+	}
+}
 
 // ============================================================================
 // INIT
@@ -802,7 +650,7 @@ async function initApp() {
 	);
 
 	// Get current window ID for filtering tab events
-	const currentWindow = await browserAPI.windows.getCurrent();
+	const currentWindow = await chrome.windows.getCurrent();
 	if (!currentWindow.id) {
 		throw new Error("Failed to get current window ID");
 	}
@@ -811,7 +659,7 @@ async function initApp() {
 	// Initialize port communication system
 	port.initialize(currentWindowId);
 
-	// Request persistent storage
+	// TODO reenable Request persistent storage
 	// if (storage.sessions) {
 	// 	await PersistentStorageDialog.request();
 	// }
@@ -837,81 +685,26 @@ async function initApp() {
 	// Create ChatPanel
 	chatPanel = new ChatPanel();
 
+	// Handle test steps
+	if (await testSteps()) {
+		return;
+	}
+
 	// Check for session in URL
 	const urlParams = new URLSearchParams(window.location.search);
 	let sessionIdFromUrl = urlParams.get("session");
 	const isNewSession = urlParams.get("new") === "true";
-	const testStepsParam = urlParams.get("teststeps");
-	const testProvider = urlParams.get("provider");
-	const testModel = urlParams.get("model");
-
-	// Handle test prompts - create temporary session without saving
-	if (testStepsParam) {
-		try {
-			const testSteps = JSON.parse(
-				decodeURIComponent(testStepsParam),
-			) as string[];
-
-			// Set model if specified
-			let initialState: Partial<AgentState> | undefined;
-			if (testProvider && testModel) {
-				const model = getModel(testProvider as any, testModel);
-				if (model) {
-					initialState = {
-						systemPrompt,
-						model,
-					};
-				}
-			}
-
-			await createAgent(initialState, false);
-			renderApp();
-
-			// Wait for UI to render
-			await new Promise((resolve) => requestAnimationFrame(resolve));
-
-			// Submit prompts sequentially
-			for (let i = 0; i < testSteps.length; i++) {
-				const step = testSteps[i];
-				if (!chatPanel?.agentInterface) break;
-
-				// Send the prompt
-				await chatPanel.agentInterface.sendMessage(step);
-
-				// Wait for agent to finish (not streaming anymore)
-				if (i < testSteps.length - 1) {
-					// Wait for response to complete before sending next step
-					await new Promise<void>((resolve) => {
-						const checkComplete = () => {
-							if (!chatPanel.agent?.state.isStreaming) {
-								resolve();
-							} else {
-								setTimeout(checkComplete, 100);
-							}
-						};
-						checkComplete();
-					});
-				}
-			}
-			return;
-		} catch (err) {
-			console.error("Failed to run test steps:", err);
-		}
-	}
 
 	// If no session in URL and not explicitly creating new, try to load the most recent session
 	if (!sessionIdFromUrl && !isNewSession && storage.sessions) {
 		const latestSessionId = await storage.sessions.getLatestSessionId();
 		if (latestSessionId) {
 			// Try to acquire lock for latest session
-			const lockResponse = await port.sendMessage(
-				{
-					type: "acquireLock",
-					sessionId: latestSessionId,
-					windowId: currentWindowId,
-				},
-				"lockResult",
-			);
+			const lockResponse = await port.sendMessage({
+				type: "acquireLock",
+				sessionId: latestSessionId,
+				windowId: currentWindowId,
+			});
 
 			if (lockResponse.success) {
 				sessionIdFromUrl = latestSessionId;
@@ -926,20 +719,17 @@ async function initApp() {
 		const sessionData = await storage.sessions.loadSession(sessionIdFromUrl);
 		if (sessionData) {
 			// Try to acquire lock if we don't already have it (in case user navigated directly via URL)
-			const lockResponse = await port.sendMessage(
-				{
-					type: "acquireLock",
-					sessionId: sessionIdFromUrl,
-					windowId: currentWindowId,
-				},
-				"lockResult",
-			);
+			const lockResponse = await port.sendMessage({
+				type: "acquireLock",
+				sessionId: sessionIdFromUrl,
+				windowId: currentWindowId,
+			});
 
 			if (!lockResponse.success) {
 				// Session is locked in another window - show landing page instead
 				await createAgent();
 				if (agent) {
-					const welcomeMessage = createWelcomeMessage(welcomeMessages);
+					const welcomeMessage = createWelcomeMessage(tutorials);
 					agent.appendMessage(welcomeMessage);
 				}
 				renderApp();
@@ -951,7 +741,7 @@ async function initApp() {
 			currentTitle = metadata?.title || "";
 
 			await createAgent({
-				systemPrompt,
+				systemPrompt: SYSTEM_PROMPT,
 				model: sessionData.model,
 				thinkingLevel: sessionData.thinkingLevel,
 				messages: sessionData.messages,
@@ -972,7 +762,7 @@ async function initApp() {
 
 	// Add welcome message for new sessions
 	if (agent) {
-		const welcomeMessage = createWelcomeMessage(welcomeMessages);
+		const welcomeMessage = createWelcomeMessage(tutorials);
 		agent.appendMessage(welcomeMessage);
 	}
 

@@ -9,7 +9,7 @@ import {
 import { type SessionMetadata, formatUsage } from "@mariozechner/pi-web-ui";
 import { customElement, state } from "lit/decorators.js";
 import { getAppStorage } from "@mariozechner/pi-web-ui";
-import * as port from "../port.js";
+import * as port from "../utils/port.js";
 import Fuse from "fuse.js";
 
 // Cross-browser API compatibility
@@ -77,7 +77,6 @@ export class SitegeistSessionListDialog extends DialogBase {
 			// Get lock information from background via port
 			const lockResponse = await port.sendMessage(
 				{ type: "getLockedSessions" },
-				"lockedSessions"
 			);
 			this.sessionLocks = lockResponse.locks || {};
 		} catch (err) {

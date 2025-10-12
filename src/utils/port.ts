@@ -6,7 +6,7 @@
  */
 
 // ============================================================================
-// MESSAGE TYPES
+// MESSAGE INTERFACES
 // ============================================================================
 
 /**
@@ -56,42 +56,50 @@ export interface CloseYourselfMessage {
 }
 
 /**
+ * Marker interface for fire-and-forget messages (no response expected).
+ */
+export interface VoidResponse {
+	_void: never;
+}
+
+// ============================================================================
+// DERIVED TYPES
+// ============================================================================
+
+/**
+ * Defines all request/response message pairs.
+ * This is the single source of truth for all port communication.
+ */
+export type MessagePair =
+	| { request: AcquireLockMessage; response: LockResultMessage }
+	| { request: GetLockedSessionsMessage; response: LockedSessionsMessage };
+
+/**
  * All messages that can be sent from sidepanel to background.
  */
-export type SidepanelToBackgroundMessage =
-	| AcquireLockMessage
-	| GetLockedSessionsMessage;
+export type SidepanelToBackgroundMessage = MessagePair["request"];
 
 /**
  * All messages that can be sent from background to sidepanel.
  */
-export type BackgroundToSidepanelMessage =
-	| LockResultMessage
-	| LockedSessionsMessage
-	| CloseYourselfMessage;
+export type BackgroundToSidepanelMessage = MessagePair["response"] | CloseYourselfMessage;
 
 /**
- * Maps request message types to their corresponding response message types.
- * This allows TypeScript to infer the response type from the request.
+ * Maps request message type to corresponding response message type.
  */
-export interface MessagePairs {
-	acquireLock: {
-		request: AcquireLockMessage;
-		response: LockResultMessage;
-	};
-	getLockedSessions: {
-		request: GetLockedSessionsMessage;
-		response: LockedSessionsMessage;
-	};
-}
+export type ResponseForRequest<TRequest extends SidepanelToBackgroundMessage> = Extract<
+	MessagePair,
+	{ request: TRequest }
+>["response"];
 
 /**
- * Helper type to extract response type from request message type.
+ * Runtime mapping from request type to response type.
+ * Used to determine which response message to wait for.
  */
-type ResponseForRequest<TRequest extends SidepanelToBackgroundMessage> =
-	TRequest extends AcquireLockMessage ? LockResultMessage :
-	TRequest extends GetLockedSessionsMessage ? LockedSessionsMessage :
-	never;
+export const REQUEST_TO_RESPONSE_TYPE: Record<SidepanelToBackgroundMessage["type"], BackgroundToSidepanelMessage["type"]> = {
+	acquireLock: "lockResult",
+	getLockedSessions: "lockedSessions",
+};
 
 // ============================================================================
 // PORT COMMUNICATION
@@ -123,7 +131,7 @@ function connect(): void {
 	port = chrome.runtime.connect({ name: `sidepanel:${currentWindowId}` });
 
 	// Set up message listener to dispatch responses
-	port.onMessage.addListener((msg) => {
+	port.onMessage.addListener((msg: BackgroundToSidepanelMessage) => {
 		// Handle special close-yourself command
 		if (msg.type === "close-yourself") {
 			window.close();
@@ -159,13 +167,11 @@ function disconnect(): void {
  * The response type is automatically inferred from the request message type.
  *
  * @param message - Request message to send to background script
- * @param responseType - Expected response message type (e.g., "lockResult")
  * @param timeoutMs - Response timeout in milliseconds (default: 5000)
  * @returns Promise resolving to the corresponding response message
  */
 export async function sendMessage<TRequest extends SidepanelToBackgroundMessage>(
 	message: TRequest,
-	responseType: ResponseForRequest<TRequest>["type"],
 	timeoutMs?: number,
 ): Promise<ResponseForRequest<TRequest>>;
 
@@ -182,9 +188,9 @@ export async function sendMessage(
 // Implementation
 export async function sendMessage<TRequest extends SidepanelToBackgroundMessage>(
 	message: SidepanelToBackgroundMessage,
-	responseType?: string,
 	timeoutMs = 5000,
-): Promise<ResponseForRequest<TRequest> | void> {
+	// biome-ignore lint/suspicious/noExplicitAny: return type determined by overload signatures
+): Promise<any> {
 	for (let attempt = 1; attempt <= 2; attempt++) {
 		// Ensure we have a port connection
 		if (!port) {
@@ -197,6 +203,9 @@ export async function sendMessage<TRequest extends SidepanelToBackgroundMessage>
 		}
 
 		try {
+			// Determine expected response type from request type
+			const responseType = REQUEST_TO_RESPONSE_TYPE[message.type];
+
 			// Set up response handler if expecting a response
 			let responsePromise: Promise<BackgroundToSidepanelMessage> | undefined;
 			if (responseType) {
@@ -224,6 +233,9 @@ export async function sendMessage<TRequest extends SidepanelToBackgroundMessage>
 			}
 			return;
 		} catch (err) {
+			// Determine expected response type from request type for cleanup
+			const responseType = REQUEST_TO_RESPONSE_TYPE[message.type];
+
 			// Clean up response handler if we set one up
 			if (responseType) {
 				responseHandlers.delete(responseType);
