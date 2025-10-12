@@ -112,13 +112,16 @@ async function generateIcon(iconSize: IconSize) {
 	try {
 		const blob = await captureOrbAsImage(iconSize.size);
 
-		// Show preview
+		// Show preview - scale to fit 64x64 container while maintaining aspect ratio
 		if (previewEl) {
 			const img = document.createElement("img");
 			img.src = URL.createObjectURL(blob);
-			img.style.width = `${iconSize.size}px`;
-			img.style.height = `${iconSize.size}px`;
-			img.style.imageRendering = "pixelated"; // Keep sharp edges
+			img.style.maxWidth = "100%";
+			img.style.maxHeight = "100%";
+			img.style.width = "auto";
+			img.style.height = "auto";
+			img.style.objectFit = "contain";
+			img.style.imageRendering = "pixelated"; // Keep sharp edges for small icons
 			previewEl.appendChild(img);
 		}
 

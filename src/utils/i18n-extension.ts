@@ -65,9 +65,9 @@ declare module "@mariozechner/mini-lit" {
 		"Delete {count} sessions older than {days} days?": string;
 		"Failed to delete sessions. Check console for details.": string;
 		"Delete Old": string;
-		"Delete older than 7 days": string;
-		"Delete older than 30 days": string;
-		"Delete older than 90 days": string;
+		"Older than 7 days": string;
+		"Older than 30 days": string;
+		"Older than 90 days": string;
 		"Search sessions...": string;
 		"Total: {count} sessions · {messages} messages · ${cost}": string;
 	}

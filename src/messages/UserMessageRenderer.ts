@@ -28,7 +28,7 @@ export class SitegeistUserMessage extends LitElement {
 				: (this.message.content.find((c) => c.type === "text") as { type: "text"; text: string } | undefined)?.text || "";
 
 		return html`
-			<div class="flex justify-start">
+			<div class="flex justify-start ml-4">
 				<div class="user-message-container py-2 px-4 rounded-xl">
 					<markdown-block .content=${content}></markdown-block>
 					${
