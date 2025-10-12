@@ -10,6 +10,7 @@ import { type SessionMetadata, formatUsage } from "@mariozechner/pi-web-ui";
 import { customElement, state } from "lit/decorators.js";
 import { getAppStorage } from "@mariozechner/pi-web-ui";
 import { getPort } from "../sidepanel.js";
+import Fuse from "fuse.js";
 
 // Cross-browser API compatibility
 // @ts-expect-error - browser global exists in Firefox, chrome in Chrome
@@ -234,12 +235,16 @@ export class SitegeistSessionListDialog extends DialogBase {
 			return this.sessions;
 		}
 
-		const query = this.searchQuery.toLowerCase();
-		return this.sessions.filter(
-			(session) =>
-				session.title.toLowerCase().includes(query) ||
-				session.preview.toLowerCase().includes(query),
-		);
+		// Use Fuse.js for fuzzy search
+		const fuse = new Fuse(this.sessions, {
+			keys: ["title", "preview"],
+			threshold: 0.4, // 0 = exact match, 1 = match anything
+			ignoreLocation: true,
+			minMatchCharLength: 2,
+		});
+
+		const results = fuse.search(this.searchQuery);
+		return results.map((result) => result.item);
 	}
 
 	private getTotalStats(): { totalCost: number; totalMessages: number; totalSessions: number } {
@@ -512,11 +517,11 @@ export class SitegeistSessionListDialog extends DialogBase {
 														</span>
 													</div>
 
-													<!-- Preview text if searching -->
+													<!-- Preview text - always show if available -->
 													${
-														this.searchQuery && session.preview
+														session.preview
 															? html`<div class="text-xs text-muted-foreground mt-2 line-clamp-2">
-																	${session.preview.substring(0, 150)}${session.preview.length > 150 ? "..." : ""}
+																	${session.preview}
 																</div>`
 															: ""
 													}
