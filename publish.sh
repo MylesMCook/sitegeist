@@ -21,6 +21,9 @@ rm -f "${ZIP_NAME}"
 TEMP_DIR=$(mktemp -d)
 cp -r dist-chrome "${TEMP_DIR}/sitegeist"
 
+# Remove .map files
+find "${TEMP_DIR}/sitegeist" -name "*.map" -type f -delete
+
 # Create zip with sitegeist as the root folder
 cd "${TEMP_DIR}"
 zip -r "${ZIP_NAME}" sitegeist

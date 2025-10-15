@@ -205,7 +205,7 @@ const createAgent = async (
 	const transport = new ProviderTransport();
 
 	// Determine default model (last used model or fallback to Sonnet)
-	let defaultModel = getModel("anthropic", "claude-sonnet-4-5-20250929");
+	let defaultModel = getModel("anthropic", "claude-haiku-4-5-20251001");
 	if (!initialState?.model) {
 		const savedProvider = await storage.settings.get<string>("lastUsedModel.provider");
 		const savedModelId = await storage.settings.get<string>("lastUsedModel.modelId");
@@ -590,12 +590,20 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 // KEYBOARD SHORTCUTS
 // ============================================================================
 window.addEventListener("keydown", (e) => {
+	// Escape key to abort streaming - works globally in sidepanel
+	// Use capturing phase to intercept before MessageEditor handles it
+	if (e.key === "Escape" && agent?.state.isStreaming) {
+		e.preventDefault();
+		e.stopPropagation();
+		agent.abort();
+	}
+
 	// Cmd+U (Mac) or Ctrl+U (Windows/Linux) to open debug page
 	if ((e.metaKey || e.ctrlKey) && e.key === "u") {
 		e.preventDefault();
 		window.location.href = "./debug.html";
 	}
-});
+}, true); // Use capture phase to intercept Escape before it reaches MessageEditor
 
 // ============================================================================
 // TEST STEPS FROM DEBUGGER.TS
