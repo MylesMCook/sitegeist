@@ -6,7 +6,7 @@ import {
 	html,
 	i18n,
 } from "@mariozechner/mini-lit";
-import { formatUsage, getAppStorage, SessionData, type SessionMetadata } from "@mariozechner/pi-web-ui";
+import { formatUsage, getAppStorage, type SessionData, type SessionMetadata } from "@mariozechner/pi-web-ui";
 import Fuse from "fuse.js";
 import { customElement, state } from "lit/decorators.js";
 import * as port from "../utils/port.js";
@@ -377,7 +377,7 @@ export class SitegeistSessionListDialog extends DialogBase {
 						<div class="relative delete-menu-container">
 							<button
 								class="px-3 py-2 text-sm font-medium rounded-md border border-border bg-background text-foreground hover:bg-secondary transition-colors"
-								@click=${() => (this.showDeleteMenu = !this.showDeleteMenu)}
+								@click=${() => {this.showDeleteMenu = !this.showDeleteMenu}}
 							>
 								${i18n("Delete Old")}
 							</button>
