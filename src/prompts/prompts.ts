@@ -1,5 +1,3 @@
-import { ARTIFACTS_RUNTIME_PROVIDER_DESCRIPTION } from "@mariozechner/pi-web-ui";
-
 /**
  * Centralized prompts/descriptions for Sitegeist.
  * Each prompt is either a string constant or a template function.
@@ -177,9 +175,21 @@ Skills save time and are tested - always check for and use them before writing c
 // Native Input Events Runtime Provider
 // ============================================================================
 
-export const NATIVE_INPUT_EVENTS_DESCRIPTION = `Native Input Events (Trusted Browser Events):
-When regular JavaScript clicks/typing don't work (pages detect/block fake events), use these functions that dispatch REAL browser events:
+export const NATIVE_INPUT_EVENTS_DESCRIPTION = `
+### Native Input Events
 
+Dispatch trusted browser events that cannot be detected or blocked by web pages.
+
+#### When to Use
+- When regular JavaScript clicks/typing don't work (pages detect/block synthetic events)
+- Google Sheets navigation/selection, keyboard shortcuts, WhatsApp automation
+- Sites with anti-bot protection, React apps that ignore synthetic events
+
+#### Do NOT Use For
+- Regular form filling (use normal JavaScript instead - faster and simpler)
+- Sites where synthetic events work fine (test first before using native events)
+
+#### Functions
 - await nativeClick(selector) - Click element using trusted browser event
   * Finds element via selector, dispatches real mouse click at its center
   * Example: await nativeClick('button[aria-label="Send"]')
@@ -190,95 +200,168 @@ When regular JavaScript clicks/typing don't work (pages detect/block fake events
   * Example: await nativeType('input[name="email"]', 'test@example.com')
   * Throws error if selector not found
 
-- await nativePress(key) - Press keyboard key (keyDown + keyUp) using trusted keyboard event
-  * Simulates complete key press with proper key codes for maximum compatibility
+- await nativePress(key) - Press keyboard key (keyDown + keyUp) using trusted event
+  * Simulates complete key press with proper key codes
   * Supported keys: ArrowRight, ArrowLeft, ArrowUp, ArrowDown, Enter, Tab, Escape, Backspace, Delete, Home, End, PageUp, PageDown, Shift, Control, Alt, Meta, F1-F12, Space, Insert
   * Example: await nativePress('Enter')
-  * Example: await nativePress('ArrowRight')
   * Example: await nativePress('Escape')
   * Throws error if key name is not supported
 
 - await nativeKeyDown(key) - Press key down (without releasing)
   * Use for key combinations and modifier keys
   * Supported keys: same as nativePress
-  * Example: await nativeKeyDown('Control'); await nativeKeyDown('a'); await nativeKeyUp('a'); await nativeKeyUp('Control');
   * Must be paired with nativeKeyUp to release the key
+  * Example: await nativeKeyDown('Control')
 
 - await nativeKeyUp(key) - Release key
   * Use after nativeKeyDown to complete key press
   * Supported keys: same as nativePress
-  * Example: await nativeKeyDown('Shift'); await nativeKeyDown('ArrowRight'); await nativeKeyUp('ArrowRight'); await nativeKeyUp('Shift');
+  * Example: await nativeKeyUp('Control')
 
-Key Combination Examples:
-  * Ctrl+A (Select All): await nativeKeyDown('Control'); await nativeKeyDown('a'); await nativeKeyUp('a'); await nativeKeyUp('Control');
-  * Ctrl+Home (Go to start): await nativeKeyDown('Control'); await nativeKeyDown('Home'); await nativeKeyUp('Home'); await nativeKeyUp('Control');
-  * Shift+End (Select to end): await nativeKeyDown('Shift'); await nativeKeyDown('End'); await nativeKeyUp('End'); await nativeKeyUp('Shift');
+#### Example
+Simple click and type:
+\`\`\`javascript
+await nativeClick('button.start');
+await nativeType('input[name="username"]', 'john@example.com');
+await nativePress('Enter');
+\`\`\`
 
-Use cases: Google Sheets navigation/selection, keyboard shortcuts, WhatsApp automation, sites with anti-bot protection, React apps that ignore synthetic events
-Note: These use Chrome's debugger API for trusted events. Regular clicks/typing work fine for most sites.`;
+Key combinations (Ctrl+A to select all):
+\`\`\`javascript
+await nativeKeyDown('Control');
+await nativeKeyDown('a');
+await nativeKeyUp('a');
+await nativeKeyUp('Control');
+\`\`\`
+
+Shift+End (select to end of line):
+\`\`\`javascript
+await nativeKeyDown('Shift');
+await nativeKeyDown('End');
+await nativeKeyUp('End');
+await nativeKeyUp('Shift');
+\`\`\`
+
+Note: These use Chrome's debugger API for trusted events. Regular clicks/typing work fine for most sites.
+`;
 
 // ============================================================================
-// Browser JavaScript Tool
+// BrowserJS Runtime Provider
 // ============================================================================
 
-export const BROWSER_JAVASCRIPT_DESCRIPTION = `Execute JavaScript code in the context of the active browser tab.
+export const BROWSERJS_RUNTIME_PROVIDER_DESCRIPTION = `
+### BrowserJS
 
-Environment: The current page's JavaScript context with full access to:
-- The page's DOM (document, window, all elements)
-- The page's JavaScript variables and functions
-- All web APIs available to the page
-- localStorage, sessionStorage, cookies
-- Page frameworks (React, Vue, Angular, etc.)
-- Can modify the page, read data, interact with page scripts
+Execute JavaScript code in the active tab's page context with full DOM access.
 
-The code runs in the main world of the page, so it can:
-- Access and modify global variables
-- Call page functions
-- Read/write to localStorage, cookies, etc.
-- Make fetch requests from the page's origin
-- Interact with page frameworks (React, Vue, etc.)
+#### When to Use
+- Scraping data from the current page
+- Interacting with page elements (clicking, typing, reading)
+- Accessing page DOM, window object, and browser APIs
+- Multi-page workflows that need to extract data from each page
 
-Output:
-- console.log() - All output is captured as text
-- await returnDownloadableFile(filename, content, mimeType?) - Create downloadable files (one-time downloads, you won't have access to content)
-  * Use for: One-off exports where you don't need to access or modify the content later
-  * Important: This creates a download for the user. You will NOT be able to access this file's content later.
-  * If you need to access the data later, use createArtifact() instead (see below).
-  * Always use await with returnDownloadableFile
-  * REQUIRED: For Blob/Uint8Array binary content, you MUST supply a proper MIME type (e.g., "image/png")
-  * Strings without a MIME default to text/plain, objects auto-JSON stringify to application/json
-  * Examples:
-    - await returnDownloadableFile('links.csv', csvData, 'text/csv')
-    - await returnDownloadableFile('data.json', {key: 'value'}, 'application/json')
-    - await returnDownloadableFile('screenshot.png', blob, 'image/png')
+#### Do NOT Use For
+- Simple calculations or data transformations (use REPL context instead)
+- Processing user attachments (not available in page context)
+- Creating artifacts from scratch (do that in REPL context, use browserjs only to extract data)
 
-${ARTIFACTS_RUNTIME_PROVIDER_DESCRIPTION}
+#### Functions
+- await browserjs(func, ...args) - Execute function in active tab's page context, returns result
+  * Function runs with full access to page DOM and window object
+  * Skills for current domain auto-inject into execution context
+  * Parameters must be JSON-serializable (primitives, objects, arrays)
+  * Return value must be JSON-serializable
+  * Cannot access closure variables - pass all needed data as parameters
+  * Example: const title = await browserjs(() => document.title)
+  * Example with args: const count = await browserjs((sel) => document.querySelectorAll(sel).length, '.product')
 
-${NATIVE_INPUT_EVENTS_DESCRIPTION}
+#### Example
+Extract page title:
+\`\`\`javascript
+const title = await browserjs(() => document.title);
+console.log('Page title:', title);
+\`\`\`
 
-- return <value> - To capture and display a return value, you MUST use an explicit return statement
-  * REQUIRED: Use return if you want to show a value in the output
-  * Without return, the script executes successfully but no value is displayed (only console logs)
-  * Example: return document.title
-  * Example: return await Promise.resolve(42)
-  * Note: Just writing an expression like "document.title" or "42" at the end does NOT capture the value - you need return
+Scrape data with parameter:
+\`\`\`javascript
+const products = await browserjs((selector) => {
+  return Array.from(document.querySelectorAll(selector)).map(el => ({
+    name: el.querySelector('h2')?.textContent,
+    price: el.querySelector('.price')?.textContent
+  }));
+}, '.product-card');
+\`\`\`
 
-Examples:
-- Get page title: document.title
-- Get all links: Array.from(document.querySelectorAll('a')).map(a => ({text: a.textContent, href: a.href}))
-- Extract all text: document.body.innerText
-- Modify page: document.body.style.backgroundColor = 'lightblue'
-- Read page data: window.myAppData
-- Get cookies: document.cookie
-- Execute page functions: window.myPageFunction()
-- Access React/Vue instances: window.__REACT_DEVTOOLS_GLOBAL_HOOK__, window.$vm
+Multi-page scraping workflow:
+\`\`\`javascript
+const allData = [];
+for (let page = 1; page <= 3; page++) {
+  await navigate({ url: \`https://example.com/page/\${page}\` });
+  const pageData = await browserjs(() => {
+    return Array.from(document.querySelectorAll('.item')).map(item => item.textContent);
+  });
+  allData.push(...pageData);
+}
+await createOrUpdateArtifact('scraped-data.json', allData);
+\`\`\`
+`;
 
-CRITICAL - Navigation:
-NEVER use window.location, history.back/forward, or any navigation code in browser_javascript.
-ALWAYS use the navigate tool for ALL navigation.
-The navigate tool handles navigation properly and returns available skills.
+// ============================================================================
+// Navigate Runtime Provider
+// ============================================================================
 
-Note: This requires the activeTab permission and only works on http/https pages, not on chrome:// URLs.`;
+export const NAVIGATE_RUNTIME_PROVIDER_DESCRIPTION = `
+### Navigate
+
+Navigate the browser to URLs or use browser history from your code.
+
+#### When to Use
+- Multi-page scraping workflows that need to visit multiple URLs
+- Automation scripts that navigate between pages
+- Workflows that require browser history navigation (back/forward)
+
+#### Do NOT Use For
+- Single page tasks (just use browserjs on current page)
+- Opening links in new tabs (navigate only works with current tab)
+
+#### Functions
+- await navigate(args) - Navigate browser and wait for page load, returns {finalUrl, title, skills}
+  * Waits for DOMContentLoaded before returning
+  * Returns final URL after any redirects
+  * Returns page title
+  * Returns list of available skills for the URL
+  * Example: await navigate({ url: 'https://example.com' })
+  * Example: await navigate({ history: 'back' })
+  * Example: await navigate({ history: 'forward' })
+
+#### Example
+Navigate to URL:
+\`\`\`javascript
+const result = await navigate({ url: 'https://example.com' });
+console.log('Loaded:', result.title);
+console.log('Final URL:', result.finalUrl);
+\`\`\`
+
+Multi-page workflow:
+\`\`\`javascript
+// Visit multiple pages and collect data
+const results = [];
+const urls = ['https://site.com/page1', 'https://site.com/page2', 'https://site.com/page3'];
+
+for (const url of urls) {
+  await navigate({ url });
+  const data = await browserjs(() => document.querySelector('h1').textContent);
+  results.push(data);
+}
+\`\`\`
+
+History navigation:
+\`\`\`javascript
+await navigate({ history: 'back' });
+const previousPage = await browserjs(() => document.title);
+console.log('Went back to:', previousPage);
+\`\`\`
+`;
 
 // ============================================================================
 // Navigate Tool
