@@ -46,6 +46,9 @@ async function startServer() {
 	// Create Express app
 	const app = express();
 
+	// Trust proxy - we're behind Caddy reverse proxy
+	app.set("trust proxy", 1);
+
 	// Middleware
 	app.use(cors());
 	app.use(cookieParser());
