@@ -19,6 +19,7 @@ import {
 import { html, render } from "lit";
 import { History, Plus, Settings } from "lucide";
 import { CostsTab } from "./dialogs/CostsTab.js";
+import { SessionCostDialog } from "./dialogs/SessionCostDialog.js";
 import { SitegeistSessionListDialog } from "./dialogs/SessionListDialog.js";
 import { SkillsTab } from "./dialogs/SkillsTab.js";
 import { UserScriptsPermissionDialog } from "./dialogs/UserScriptsPermissionDialog.js";
@@ -599,6 +600,14 @@ window.addEventListener(
 		if ((e.metaKey || e.ctrlKey) && e.key === "u") {
 			e.preventDefault();
 			window.location.href = "./debug.html";
+		}
+
+		// Cmd+Shift+K (Mac) or Ctrl+Shift+K (Windows/Linux) to show session costs
+		if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "k") {
+			e.preventDefault();
+			if (agent?.state.messages && agent.state.messages.length > 0) {
+				SessionCostDialog.open(agent.state.messages);
+			}
 		}
 	},
 	true,
