@@ -8,6 +8,7 @@ import {
 	SettingsStore,
 } from "@mariozechner/pi-web-ui";
 import { CostStore } from "./stores/cost-store.js";
+import { SitegeistSessionsStore } from "./stores/sessions-store.js";
 import { SkillsStore } from "./stores/skills-store.js";
 
 /**
@@ -21,7 +22,7 @@ export class SitegeistAppStorage extends BaseAppStorage {
 		// 1. Create all stores (no backend yet)
 		const settings = new SettingsStore();
 		const providerKeys = new ProviderKeysStore();
-		const sessions = new SessionsStore();
+		const sessions = new SitegeistSessionsStore();
 		const customProviders = new CustomProvidersStore();
 		const skills = new SkillsStore();
 		const costs = new CostStore();
