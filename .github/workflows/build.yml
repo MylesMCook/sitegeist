@@ -46,13 +46,32 @@ jobs:
         id: version
         run: echo "version=$(node -p "require('./dist-chrome/manifest.json').version")" >> "$GITHUB_OUTPUT"
 
+      - name: Extract changelog
+        id: changelog
+        run: |
+          # Extract the section for this version from CHANGELOG.md
+          VERSION="${{ steps.version.outputs.version }}"
+          NOTES=$(node -e "
+            const fs = require('fs');
+            const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+            const re = new RegExp('## \\\\[' + VERSION.replace(/\\./g, '\\\\.') + '\\\\][^\\n]*\\n(.*?)(?=\\n## \\\\[|$)', 's');
+            const match = changelog.match(re);
+            if (match) process.stdout.write(match[1].trim());
+          ")
+          # Write to file to preserve newlines
+          echo "$NOTES" > /tmp/release-notes.md
+          echo "" >> /tmp/release-notes.md
+          echo "---" >> /tmp/release-notes.md
+          echo "" >> /tmp/release-notes.md
+          echo 'Download `sitegeist.zip`, unzip, and load as unpacked extension in Chrome/Edge.' >> /tmp/release-notes.md
+          echo "" >> /tmp/release-notes.md
+          echo "See [installation instructions](https://sitegeist.ai/install.html) for details." >> /tmp/release-notes.md
+
       - name: Create release
         run: |
           gh release create ${{ github.ref_name }} sitegeist.zip \
             --title "Sitegeist ${{ steps.version.outputs.version }}" \
-            --notes "Download \`sitegeist.zip\`, unzip, and load as unpacked extension in Chrome/Edge.
-
-          See [installation instructions](https://sitegeist.ai/install.html) for details." \
+            --notes-file /tmp/release-notes.md \
             --latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
