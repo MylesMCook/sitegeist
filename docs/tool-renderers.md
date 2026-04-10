@@ -53,7 +53,7 @@ Renderers should handle all execution states:
 ### Registration
 
 ```typescript
-import { registerToolRenderer } from "@mariozechner/pi-web-ui";
+import { registerToolRenderer } from "@sitegeist/pi-web-ui";
 
 registerToolRenderer("tool_name", toolRenderer);
 ```
@@ -170,3 +170,4 @@ Use `isCustom: false` when:
 **Renderers:**
 - `pi-mono/packages/web-ui/src/tools/renderers/` - Built-in renderers
 - `sitegeist/src/tools/` - Extension-specific renderers
+

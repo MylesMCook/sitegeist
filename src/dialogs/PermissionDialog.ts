@@ -1,7 +1,7 @@
-import { Button } from "@mariozechner/mini-lit/dist/Button.js";
-import { DialogContent, DialogHeader } from "@mariozechner/mini-lit/dist/Dialog.js";
-import { DialogBase } from "@mariozechner/mini-lit/dist/DialogBase.js";
-import { i18n } from "@mariozechner/mini-lit/dist/i18n.js";
+import { Button } from "@sitegeist/mini-lit/dist/Button.js";
+import { DialogContent, DialogHeader } from "@sitegeist/mini-lit/dist/Dialog.js";
+import { DialogBase } from "@sitegeist/mini-lit/dist/DialogBase.js";
+import { i18n } from "@sitegeist/mini-lit/dist/i18n.js";
 import { html } from "lit";
 
 export abstract class PermissionDialog extends DialogBase {

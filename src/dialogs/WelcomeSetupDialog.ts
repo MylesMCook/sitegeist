@@ -1,11 +1,11 @@
-import { Button } from "@mariozechner/mini-lit/dist/Button.js";
-import { DialogContent, DialogHeader } from "@mariozechner/mini-lit/dist/Dialog.js";
-import { DialogBase } from "@mariozechner/mini-lit/dist/DialogBase.js";
+import { Button } from "@sitegeist/mini-lit/dist/Button.js";
+import { DialogContent, DialogHeader } from "@sitegeist/mini-lit/dist/Dialog.js";
+import { DialogBase } from "@sitegeist/mini-lit/dist/DialogBase.js";
 import { html } from "lit";
 
 /**
- * Shown on first launch when no API keys are configured.
- * Blocks until user clicks OK, then opens the API Keys & OAuth settings.
+ * Shown on first launch when no providers are configured.
+ * Blocks until user clicks OK, then opens provider settings.
  */
 export class WelcomeSetupDialog extends DialogBase {
 	private resolvePromise?: () => void;
@@ -35,15 +35,14 @@ export class WelcomeSetupDialog extends DialogBase {
 						title: "Welcome to Sitegeist",
 					})}
 					<p class="text-sm text-foreground">
-						To get started, you need to connect at least one AI provider.
-						You can either log in with an existing subscription (Anthropic, OpenAI, or GitHub Copilot)
-						or enter an API key.
+						Start by connecting a subscription-backed provider like ChatGPT, Claude, GitHub Copilot, or
+						Gemini. API keys are still available later under advanced setup when you want them.
 					</p>
 					<div class="flex justify-end">
 						${Button({
 							variant: "default",
 							onClick: () => this.close(),
-							children: "Set up provider",
+							children: "Connect a provider",
 						})}
 					</div>
 				`,

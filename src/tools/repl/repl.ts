@@ -1,6 +1,7 @@
-import { i18n } from "@mariozechner/mini-lit";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
-import type { ToolResultMessage } from "@mariozechner/pi-ai";
+import { type Static, Type } from "@sinclair/typebox";
+import { i18n } from "@sitegeist/mini-lit";
+import type { AgentTool } from "@sitegeist/pi-agent-core";
+import type { ToolResultMessage } from "@sitegeist/pi-ai";
 import {
 	type Attachment,
 	registerToolRenderer,
@@ -12,8 +13,7 @@ import {
 	type SandboxRuntimeProvider,
 	type ToolRenderer,
 	type ToolRenderResult,
-} from "@mariozechner/pi-web-ui";
-import { type Static, Type } from "@sinclair/typebox";
+} from "@sitegeist/pi-web-ui";
 import { html } from "lit";
 import { createRef, ref } from "lit/directives/ref.js";
 import { Code } from "lucide";

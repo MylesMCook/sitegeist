@@ -1,11 +1,12 @@
-import { Button } from "@mariozechner/mini-lit/dist/Button.js";
-import { icon } from "@mariozechner/mini-lit/dist/icons.js";
-import { Switch } from "@mariozechner/mini-lit/dist/Switch.js";
-import { getModel } from "@mariozechner/pi-ai";
-import { setAppStorage } from "@mariozechner/pi-web-ui";
+import { Button } from "@sitegeist/mini-lit/dist/Button.js";
+import { icon } from "@sitegeist/mini-lit/dist/icons.js";
+import { Switch } from "@sitegeist/mini-lit/dist/Switch.js";
+import { getModel } from "@sitegeist/pi-ai";
+import { setAppStorage } from "@sitegeist/pi-web-ui";
 import { html, render } from "lit";
 import { ArrowLeft, Bug, MousePointer2, Play, Sparkles } from "lucide";
 import "./debug/ReplPanel.js";
+import { OPENAI_CHATGPT_MODEL } from "./models.js";
 import { SitegeistAppStorage } from "./storage/app-storage.js";
 import { askUserWhichElementTool } from "./tools/ask-user-which-element.js";
 
@@ -14,12 +15,16 @@ interface TestPrompt {
 	steps: string[];
 }
 
+function isDefined<T>(value: T | undefined): value is T {
+	return value !== undefined;
+}
+
 const models = [
 	getModel("anthropic", "claude-sonnet-4-5-20250929"),
-	getModel("openai", "gpt-5-codex"),
+	getModel("openai-codex", OPENAI_CHATGPT_MODEL) || getModel("openai", OPENAI_CHATGPT_MODEL),
 	getModel("google", "gemini-2.5-pro"),
 	getModel("openrouter", "z-ai/glm-4.6"),
-];
+].filter(isDefined);
 
 // Initialize AppStorage so tools relying on Sitegeist storage can operate in debug page
 const storage = new SitegeistAppStorage();

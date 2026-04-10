@@ -1,4 +1,4 @@
-import { icon } from "@mariozechner/mini-lit";
+import { icon } from "@sitegeist/mini-lit";
 import { html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { AlertCircle, CheckCircle, X } from "lucide";

@@ -1,10 +1,11 @@
 import { html, type TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import "../utils/i18n-extension.js";
-import { Button } from "@mariozechner/mini-lit/dist/Button.js";
-import { DialogContent, DialogHeader } from "@mariozechner/mini-lit/dist/Dialog.js";
-import { DialogBase } from "@mariozechner/mini-lit/dist/DialogBase.js";
-import { i18n } from "@mariozechner/mini-lit/dist/i18n.js";
+import { Button } from "@sitegeist/mini-lit/dist/Button.js";
+import { DialogContent, DialogHeader } from "@sitegeist/mini-lit/dist/Dialog.js";
+import { DialogBase } from "@sitegeist/mini-lit/dist/DialogBase.js";
+import { i18n } from "@sitegeist/mini-lit/dist/i18n.js";
+import { appConfig } from "../config/app-config.js";
 
 @customElement("update-notification-dialog")
 export class UpdateNotificationDialog extends DialogBase {
@@ -34,7 +35,7 @@ export class UpdateNotificationDialog extends DialogBase {
 	}
 
 	private handleUpdate() {
-		window.open("https://sitegeist.ai/install#updating", "_blank");
+		window.open(appConfig.updatePageUrl, "_blank");
 		// Don't close - keep blocking until extension is actually updated and restarted
 	}
 

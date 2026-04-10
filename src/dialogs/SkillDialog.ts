@@ -1,7 +1,7 @@
-import "@mariozechner/mini-lit/dist/MarkdownBlock.js";
-import { DialogBase } from "@mariozechner/mini-lit/dist/DialogBase.js";
-import i18n from "@mariozechner/mini-lit/dist/i18n.js";
-import { icon } from "@mariozechner/mini-lit/dist/icons.js";
+import "@sitegeist/mini-lit/dist/MarkdownBlock.js";
+import { DialogBase } from "@sitegeist/mini-lit/dist/DialogBase.js";
+import i18n from "@sitegeist/mini-lit/dist/i18n.js";
+import { icon } from "@sitegeist/mini-lit/dist/icons.js";
 import { html } from "lit";
 import { Sparkles } from "lucide";
 import { DomainPill } from "../components/DomainPill.js";

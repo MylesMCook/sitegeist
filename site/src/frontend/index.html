@@ -7,12 +7,12 @@
     <link rel="stylesheet" href="app.css">
     <script>
         // Force dark theme
-        localStorage.setItem("theme", "dark");
-        document.documentElement.classList.add("dark");
+                localStorage.setItem("theme", "dark");
+                document.documentElement.classList.add("dark");
     </script>
 </head>
 <body class="px-4 py-6 md:py-12">
-    <a href="https://github.com/badlogic/sitegeist" target="_blank" class="fixed top-5 right-5 z-50 text-muted-foreground/50 hover:text-foreground transition-colors" aria-label="View on GitHub" title="View on GitHub">
+    <a href="https://github.com/MylesMCook/sitegeist" target="_blank" class="fixed top-5 right-5 z-50 text-muted-foreground/50 hover:text-foreground transition-colors" aria-label="View on GitHub" title="View on GitHub">
         <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
     <div class="max-w-4xl mx-auto w-full">
@@ -32,7 +32,7 @@
 
         <!-- Download -->
         <div class="p-8 mb-26 text-center">
-            <a href="https://github.com/badlogic/sitegeist/releases/latest" target="_blank" class="inline-block px-8 py-4 text-lg font-medium rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/50 text-foreground transition-all hover:shadow-lg hover:shadow-orange-500/20">Download from GitHub</a>
+            <a href="https://github.com/MylesMCook/sitegeist/releases/latest" target="_blank" class="inline-block px-8 py-4 text-lg font-medium rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/50 text-foreground transition-all hover:shadow-lg hover:shadow-orange-500/20">Download from GitHub</a>
             <p class="text-xs text-muted-foreground mt-3"><a href="install.html" class="underline hover:text-foreground">Installation instructions</a></p>
         </div>
 
@@ -48,12 +48,10 @@
         <div class="mb-26 text-center max-w-2xl mx-auto">
             <h2 class="text-3xl font-bold mb-6">Cookie ingredient calculator? <span class="inline-block bg-gradient-to-r from-orange-600 to-yellow-400 bg-clip-text text-transparent">Sure.</span></h2>
             <div class="flex justify-center mb-4">
-                <video controls class="w-full rounded-lg" preload="metadata" poster="img/preview-cookies.png">
-                    <source src="https://sink.mariozechner.at/api/share/5a12c9a8b50070c13e44e4f7032cced5/file/cookies.mp4" type="video/mp4">
-                </video>
+                <img src="img/preview-cookies.png" alt="Sitegeist workflow preview" class="w-full rounded-lg border border-border">
             </div>
             <p class="text-xs text-muted-foreground">
-                Real-time video. Apologies to cookie connoisseurs. <a href="https://sink.mariozechner.at/api/share/07753395e775be9373b7c0937bff0ba9/file/cookies-gerpertee.mp4" target="_blank" class="underline hover:text-foreground">Watch ChatGPT Atlas try to do the same</a>
+                Workflow preview. Apologies to cookie connoisseurs.
             </p>
         </div>
 
@@ -61,9 +59,7 @@
         <div class="mb-26 text-center max-w-2xl mx-auto">
             <h2 class="text-3xl font-bold mb-6">Pelican on a bike? <span class="inline-block bg-gradient-to-r from-orange-600 to-yellow-400 bg-clip-text text-transparent">Why not?</span></h2>
             <div class="flex justify-center mb-4">
-                <video controls class="w-full rounded-lg" style="max-width: 800px;" preload="metadata" poster="img/preview-pelican.png">
-                    <source src="https://sink.mariozechner.at/api/share/e9661c127f3314954faf8b92075cdf57/file/pelican.mp4" type="video/mp4">
-                </video>
+                <img src="img/preview-pelican.png" alt="Sitegeist workflow preview" class="w-full rounded-lg border border-border">
             </div>
             <p class="text-xs text-muted-foreground">
                 Real-time video. Sitegeist vs. ChatGPT Atlas on this crucial productivity benchmark.
@@ -84,9 +80,7 @@
                         </p>
                     </div>
                     <div>
-                        <video controls class="w-full rounded-lg" preload="none" poster="img/preview-research.png">
-                            <source src="https://sink.mariozechner.at/api/share/83f3db8896ac684f5f03ac1df237bc90/file/research.mp4" type="video/mp4">
-                        </video>
+                        <img src="img/preview-research.png" alt="Sitegeist workflow preview" class="w-full rounded-lg border border-border">
                     </div>
                 </div>
 
@@ -99,9 +93,7 @@
                         </p>
                     </div>
                     <div class="md:order-1">
-                        <video controls class="w-full rounded-lg" preload="none" poster="img/preview-sheets.png">
-                            <source src="https://sink.mariozechner.at/api/share/ba464b83bec1732b36bfeb4be4b5c847/file/sheets.mp4" type="video/mp4">
-                        </video>
+                        <img src="img/preview-sheets.png" alt="Sitegeist workflow preview" class="w-full rounded-lg border border-border">
                     </div>
                 </div>
 
@@ -114,9 +106,7 @@
                         </p>
                     </div>
                     <div>
-                        <video controls class="w-full rounded-lg" preload="none" poster="img/preview-spelling.png">
-                            <source src="https://sink.mariozechner.at/api/share/356c8b5cd0cbb2ca6c3fc3a3e1e0e6ae/file/spelling.mp4" type="video/mp4">
-                        </video>
+                        <img src="img/preview-spelling.png" alt="Sitegeist workflow preview" class="w-full rounded-lg border border-border">
                     </div>
                 </div>
 
@@ -129,9 +119,7 @@
                         </p>
                     </div>
                     <div class="md:order-1">
-                        <video controls class="w-full rounded-lg" preload="metadata" poster="img/preview-youtube.png">
-                            <source src="https://sink.mariozechner.at/api/share/c4f8ae0bac5be0ab6c210eff8f6667db/file/youtube.mp4" type="video/mp4">
-                        </video>
+                        <img src="img/preview-youtube.png" alt="Sitegeist workflow preview" class="w-full rounded-lg border border-border">
                     </div>
                 </div>
 
@@ -144,9 +132,7 @@
                         </p>
                     </div>
                     <div>
-                        <video controls class="w-full rounded-lg" preload="metadata">
-                            <source src="https://sink.mariozechner.at/api/share/a8e41639ddbd2c353d0fb1feacc42125/file/google-calendar.mp4" type="video/mp4">
-                        </video>
+                        <img src="img/preview-sheets.png" alt="Sitegeist workflow preview" class="w-full rounded-lg border border-border">
                     </div>
                 </div>-->
 
@@ -159,9 +145,7 @@
                         </p>
                     </div>
                     <div>
-                        <video controls class="w-full rounded-lg" preload="metadata" poster="img/preview-linkedin.png">
-                            <source src="https://sink.mariozechner.at/api/share/42d5a8d211d254745ff48d80a0d27b12/file/linkedin.mp4" type="video/mp4">
-                        </video>
+                        <img src="img/preview-linkedin.png" alt="Sitegeist workflow preview" class="w-full rounded-lg border border-border">
                     </div>
                 </div>
 
@@ -174,9 +158,7 @@
                         </p>
                     </div>
                     <div class="md:order-1">
-                        <video controls class="w-full rounded-lg" preload="metadata" poster="img/preview-calendar.png">
-                            <source src="https://sink.mariozechner.at/api/share/0a4e9ce41c61aa054e919495de6eab4e/file/calendar.mp4" type="video/mp4">
-                        </video>
+                        <img src="img/preview-calendar.png" alt="Sitegeist workflow preview" class="w-full rounded-lg border border-border">
                     </div>
                 </div>
 
@@ -185,7 +167,7 @@
                     <p class="text-4xl md:text-5xl font-bold mb-3 inline-block bg-gradient-to-r from-orange-600 to-yellow-400 bg-clip-text text-transparent">Your turn.</p>
                     <p class="text-xl md:text-2xl text-muted-foreground mb-8">What will you <span class="rotating-word" id="cta-word">automate</span>?</p>
 
-                    <a href="https://github.com/badlogic/sitegeist/releases/latest" target="_blank" class="inline-block px-8 py-4 text-lg font-medium rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/50 text-foreground transition-all hover:shadow-lg hover:shadow-orange-500/20">Download from GitHub</a>
+                    <a href="https://github.com/MylesMCook/sitegeist/releases/latest" target="_blank" class="inline-block px-8 py-4 text-lg font-medium rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/50 text-foreground transition-all hover:shadow-lg hover:shadow-orange-500/20">Download from GitHub</a>
                     <p class="text-xs text-muted-foreground mt-3"><a href="install.html" class="underline hover:text-foreground">Installation instructions</a></p>
                 </div>
             </div>
@@ -220,7 +202,7 @@
                         </div>
                     </div>
                     <p class="text-sm text-foreground">
-                        ChatGPT Atlas definitely does not feel great, but I watched @badlogicgames's sitegeist and it looks pretty damn cool when it fucks around with the browser. Much better.
+                        ChatGPT Atlas definitely does not feel great, but I watched sitegeist and it looks pretty damn cool when it fucks around with the browser. Much better.
                     </p>
                 </div>
 
@@ -305,7 +287,7 @@
                         <h3 class="text-lg font-semibold">Your Choice of AI</h3>
                     </div>
                     <p class="text-sm text-muted-foreground">
-                        Use OpenAI, Anthropic, Google, OpenRouter, Groq, Cerebras, xAI, Z.ai, or self-hosted and local models via Ollama, LM Studio, llama.cpp, vLLM, SGLM.
+                        Connect ChatGPT, Claude, GitHub Copilot, or Gemini subscriptions first. Bring your own API keys when you need them, or use self-hosted and local models via Ollama, LM Studio, llama.cpp, vLLM, and SGLM.
                     </p>
                 </div>
 
@@ -316,7 +298,7 @@
                         <h3 class="text-lg font-semibold">Privacy First</h3>
                     </div>
                     <p class="text-sm text-muted-foreground">
-                        Your settings, API keys, and chat history stay on your computer. Only your messages go to your chosen AI provider—configured to not retain or train on your data.
+                        Your settings, provider credentials, and chat history stay on your computer. API keys stay local too when you use them. Only your messages go to your chosen AI provider—configured to not retain or train on your data.
                     </p>
                 </div>
 
@@ -335,11 +317,9 @@
 
          <!-- Cost Tracking -->
         <div class="mb-26 text-center max-w-2xl mx-auto">
-            <h2 class="text-3xl font-bold mb-6">Track per session and overall cost <span class="inline-block bg-gradient-to-r from-orange-600 to-yellow-400 bg-clip-text text-transparent">across models and providers</span></h2>
+            <h2 class="text-3xl font-bold mb-6">Keep an eye on usage and cost <span class="inline-block bg-gradient-to-r from-orange-600 to-yellow-400 bg-clip-text text-transparent">across models and providers</span></h2>
             <div class="flex justify-center mb-4">
-                <video controls class="w-full rounded-lg" preload="metadata" poster="img/preview-cost.png">
-                    <source src="https://sink.mariozechner.at/api/share/b1c4922a5ace3227616a2e99163b9df3/file/cost.mp4" type="video/mp4">
-                </video>
+                <img src="img/preview-cost.png" alt="Sitegeist workflow preview" class="w-full rounded-lg border border-border">
             </div>
         </div>
 
@@ -392,18 +372,18 @@
         <!-- Pricing -->
         <div class="mb-26 max-w-4xl mx-auto">
             <h2 class="text-3xl font-bold text-center mb-4"><span class="inline-block bg-gradient-to-r from-orange-600 to-yellow-400 bg-clip-text text-transparent">Pricing</span></h2>
-            <p class="text-center text-muted-foreground mb-12">Fair pricing for software. At-cost billing for AI. We're not token merchants.</p>
+            <p class="text-center text-muted-foreground mb-12">Connect the subscriptions you already pay for. Add Sitegeist credits when you want a ready-to-run fallback. API keys stay available for advanced setups.</p>
 
             <div class="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
                 <!-- BYOK Plan -->
                 <div class="p-8 border border-border rounded-lg hover:border-orange-500/50 transition-colors">
                     <div class="mb-6">
-                        <h3 class="text-2xl font-bold mb-2">Bring Your Own Keys</h3>
+                        <h3 class="text-2xl font-bold mb-2">Use Your Own Providers</h3>
                         <div class="flex items-baseline gap-2 mb-4">
                             <span class="text-4xl font-bold">€9</span>
                             <span class="text-muted-foreground">/month</span>
                         </div>
-                        <p class="text-sm text-muted-foreground">For users comfortable with API keys and technical setup</p>
+                        <p class="text-sm text-muted-foreground">For people who want to connect existing subscriptions, local models, or their own advanced provider setup</p>
                     </div>
 
                     <ul class="space-y-3 mb-8">
@@ -417,15 +397,15 @@
                         </li>
                         <li class="flex items-start gap-3">
                             <svg class="w-5 h-5 mt-0.5 flex-shrink-0 text-orange-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                            <span class="text-sm">Cost tracking per message</span>
+                            <span class="text-sm">Connect ChatGPT Plus/Pro, Claude, GitHub Copilot, or Gemini subscriptions</span>
                         </li>
                         <li class="flex items-start gap-3">
                             <svg class="w-5 h-5 mt-0.5 flex-shrink-0 text-orange-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                            <span class="text-sm">Bring your own LLM API key</span>
+                            <span class="text-sm">Bring your own LLM API key when you want direct API billing</span>
                         </li>
                         <li class="flex items-start gap-3">
                             <svg class="w-5 h-5 mt-0.5 flex-shrink-0 text-orange-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                            <span class="text-sm">Use OpenAI, Anthropic, Google, Groq, xAI, or local models (Ollama, LMStudio, llama.cpp, etc.)</span>
+                            <span class="text-sm">Use OpenAI, Anthropic, Google, Groq, xAI, or local models (Ollama, LM Studio, llama.cpp, etc.)</span>
                         </li>
                         <li class="flex items-start gap-3">
                             <svg class="w-5 h-5 mt-0.5 flex-shrink-0 text-orange-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
@@ -445,25 +425,25 @@
                             <span class="text-4xl font-bold">€19</span>
                             <span class="text-muted-foreground">/month</span>
                         </div>
-                        <p class="text-sm text-muted-foreground">For users who want everything ready to go</p>
+                        <p class="text-sm text-muted-foreground">For users who want built-in capacity on top of connected providers</p>
                     </div>
 
                     <ul class="space-y-3 mb-8">
                         <li class="flex items-start gap-3">
                             <svg class="w-5 h-5 mt-0.5 flex-shrink-0 text-orange-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                            <span class="text-sm font-semibold">All "Bring Your Own Keys" features</span>
+                            <span class="text-sm font-semibold">Everything in "Use Your Own Providers"</span>
                         </li>
                         <li class="flex items-start gap-3">
                             <svg class="w-5 h-5 mt-0.5 flex-shrink-0 text-orange-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                            <span class="text-sm">€10 in monthly AI credits at cost, no markup. Choose between fast & affordable or powerful & smart models*</span>
+                            <span class="text-sm">€10 in monthly AI credits at cost, no markup</span>
                         </li>
                         <li class="flex items-start gap-3">
                             <svg class="w-5 h-5 mt-0.5 flex-shrink-0 text-orange-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                            <span class="text-sm">Top up anytime or bring your own API key</span>
+                            <span class="text-sm">Keep going without thinking about provider setup or switching billing modes</span>
                         </li>
                         <li class="flex items-start gap-3">
                             <svg class="w-5 h-5 mt-0.5 flex-shrink-0 text-orange-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                            <span class="text-sm">No API key setup required—just works out of the box</span>
+                            <span class="text-sm">No provider setup required on day one</span>
                         </li>
                     </ul>
                     <p class="text-xs text-muted-foreground mt-4">
@@ -486,7 +466,7 @@
                     </button>
                     <div class="faq-content max-h-0 overflow-hidden transition-all duration-200">
                         <p class="text-sm text-muted-foreground px-4 pb-4">
-                            Yes. You'll sign up with sitegeist.ai for license enforcement. We only store your payment info and license information—nothing else.
+                            No Sitegeist account is required for the local extension. Download a release, load it in your browser, and connect the providers you want to use.
                         </p>
                     </div>
                 </div>
@@ -525,7 +505,7 @@
                     </button>
                     <div class="faq-content max-h-0 overflow-hidden transition-all duration-200">
                         <p class="text-sm text-muted-foreground px-4 pb-4">
-                            Everything stays on your computer—settings, API keys, and chat history. Only your messages go to your chosen AI provider. Sitegeist configures providers to not retain or train on your data when supported. Some authentication methods (like Anthropic's Claude Pro/Max OAuth tokens) can't be used directly from the browser due to <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS" target="_blank" class="underline hover:text-foreground">CORS restrictions</a>. In this case, requests need a proxy. You can use your own, a trusted provider like corsproxy.io, or our default proxy which forwards requests without logging or storing any data. Sitegeist checks in with sitegeist.ai for license verification (your email and subscription status only). <strong class="text-orange-500">We collect zero telemetry and never will.</strong>
+                            Everything stays on your computer—settings, provider credentials, and chat history. Subscription tokens and API keys stay local. Only your messages go to your chosen AI provider. Sitegeist configures providers to not retain or train on your data when supported. Some subscription logins can still run into <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS" target="_blank" class="underline hover:text-foreground">CORS restrictions</a>. If that happens, configure your own proxy explicitly. <strong class="text-orange-500">We collect zero telemetry.</strong>
                         </p>
                     </div>
                 </div>
@@ -560,7 +540,7 @@
 
         <!-- Footer -->
         <footer class="text-center text-muted-foreground text-xs mt-12">
-            <p>Made by <a href="https://mariozechner.at" class="text-foreground underline">Mario Zechner</a></p>
+            <p>Built by <a href="https://github.com/MylesMCook" class="text-foreground underline">Myles Cook</a></p>
             <p class="mt-2">This page respects your privacy by not using cookies or similar technologies and not collecting personal information.</p>
         </footer>
     </div>
@@ -572,3 +552,5 @@
     <script type="module" src="main.ts"></script>
 </body>
 </html>
+
+

@@ -1,6 +1,6 @@
-import { Button } from "@mariozechner/mini-lit/dist/Button.js";
-import { getProviders } from "@mariozechner/pi-ai";
-import { getAppStorage, SettingsTab } from "@mariozechner/pi-web-ui";
+import { Button } from "@sitegeist/mini-lit/dist/Button.js";
+import { getProviders } from "@sitegeist/pi-ai";
+import { getAppStorage, SettingsTab } from "@sitegeist/pi-web-ui";
 import { html, type TemplateResult } from "lit";
 import { Toast } from "../components/Toast.js";
 import {
@@ -12,7 +12,7 @@ import {
 	serializeOAuthCredentials,
 } from "../oauth/index.js";
 
-const OAUTH_PROVIDERS: OAuthProviderId[] = ["anthropic", "openai-codex", "github-copilot", "google-gemini-cli"];
+const OAUTH_PROVIDERS: OAuthProviderId[] = ["openai-codex", "anthropic", "github-copilot", "google-gemini-cli"];
 
 const PROVIDER_KEY_MAP: Record<OAuthProviderId, string> = {
 	anthropic: "anthropic",
@@ -41,7 +41,7 @@ export class ApiKeysOAuthTab extends SettingsTab {
 	private deviceCode: string | null = null;
 
 	getTabName(): string {
-		return "API Keys & OAuth";
+		return "Providers";
 	}
 
 	override async connectedCallback() {
@@ -132,7 +132,7 @@ export class ApiKeysOAuthTab extends SettingsTab {
 									variant: "outline",
 									size: "sm",
 									onClick: () => this.handleLogout(provider),
-									children: "Logout",
+									children: "Disconnect",
 								})
 							: Button({
 									variant: "default",
@@ -140,7 +140,7 @@ export class ApiKeysOAuthTab extends SettingsTab {
 									disabled: status === "logging-in",
 									loading: status === "logging-in",
 									onClick: () => this.handleLogin(provider),
-									children: "Login",
+									children: "Connect",
 								})
 					}
 				</div>
@@ -152,10 +152,10 @@ export class ApiKeysOAuthTab extends SettingsTab {
 		return html`
 			<div class="flex flex-col gap-4">
 				<div>
-					<h3 class="text-sm font-semibold text-foreground mb-2">Subscription Login</h3>
+					<h3 class="text-sm font-semibold text-foreground mb-2">Connect a subscription</h3>
 					<p class="text-sm text-muted-foreground mb-4">
-						Log in with your existing subscription. No API key needed.
-						Tokens are stored locally and refreshed automatically.
+						Start here. Connect ChatGPT, Claude, GitHub Copilot, or Gemini and keep the provider's
+						subscription handling outside of API-key billing. Tokens stay local and refresh automatically.
 					</p>
 				</div>
 
@@ -170,17 +170,24 @@ export class ApiKeysOAuthTab extends SettingsTab {
 		const providers = getProviders().filter((p) => !HIDDEN_PROVIDERS.has(p));
 
 		return html`
-			<div class="flex flex-col gap-6">
-				<div>
-					<h3 class="text-sm font-semibold text-foreground mb-2">API Keys</h3>
-					<p class="text-sm text-muted-foreground mb-4">
-						Enter API keys for cloud providers. Keys are stored locally in your browser.
-					</p>
+			<details class="rounded-lg border border-border bg-card/40">
+				<summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-foreground">
+					Bring your own key
+					<span class="ml-2 text-xs font-normal text-muted-foreground">Advanced</span>
+				</summary>
+				<div class="flex flex-col gap-6 border-t border-border px-4 py-4">
+					<div>
+						<h3 class="text-sm font-semibold text-foreground mb-2">API keys</h3>
+						<p class="text-sm text-muted-foreground mb-4">
+							Use this when you want direct API billing, local-compatible endpoints, or a provider that
+							doesn't offer subscription login. Keys stay stored locally in your browser.
+						</p>
+					</div>
+					<div class="flex flex-col gap-6">
+						${providers.map((provider) => html`<provider-key-input .provider=${provider}></provider-key-input>`)}
+					</div>
 				</div>
-				<div class="flex flex-col gap-6">
-					${providers.map((provider) => html`<provider-key-input .provider=${provider}></provider-key-input>`)}
-				</div>
-			</div>
+			</details>
 		`;
 	}
 
@@ -188,7 +195,6 @@ export class ApiKeysOAuthTab extends SettingsTab {
 		return html`
 			<div class="flex flex-col gap-8">
 				${this.renderOAuthSection()}
-				<div class="border-t border-border"></div>
 				${this.renderApiKeysSection()}
 			</div>
 		`;

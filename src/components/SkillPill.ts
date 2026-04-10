@@ -1,4 +1,4 @@
-import { icon } from "@mariozechner/mini-lit/dist/icons.js";
+import { icon } from "@sitegeist/mini-lit/dist/icons.js";
 import { html, type TemplateResult } from "lit";
 import { Sparkles } from "lucide";
 import { SkillDialog } from "../dialogs/SkillDialog.js";

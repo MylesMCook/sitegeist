@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import type { Message } from "@mariozechner/pi-ai";
+import type { AgentMessage } from "@sitegeist/pi-agent-core";
+import type { Message } from "@sitegeist/pi-ai";
 import type { NavigationMessage } from "./NavigationMessage.js";
 
 // Helper: Check if a message has toolCall blocks
@@ -78,17 +78,19 @@ export async function browserMessageTransformer(messages: AgentMessage[]): Promi
 	const transformed = [];
 
 	for (const m of messages) {
+		const role = m.role as string;
+
 		// Filter out UI-only messages
-		if (m.role === "artifact" || m.role === "welcome") {
+		if (role === "artifact" || role === "welcome") {
 			continue;
 		}
 
 		// Filter non-LLM messages
-		if (m.role !== "user" && m.role !== "assistant" && m.role !== "toolResult" && m.role !== "navigation") {
+		if (role !== "user" && role !== "assistant" && role !== "toolResult" && role !== "navigation") {
 			continue;
 		}
 
-		if (m.role === "navigation") {
+		if (role === "navigation") {
 			const nav = m as NavigationMessage;
 			const tabInfo = nav.tabId !== undefined ? ` (tab id: ${nav.tabId})` : "";
 
@@ -111,9 +113,12 @@ ${skillsInfo}
 - DO NOT REPEAT THIS MESSAGE BACK TO THE USER!
 </instructions>`,
 			} as Message);
-		} else if (m.role === "user") {
-			const { attachments, ...rest } = m as any;
-			transformed.push(rest as Message);
+		} else if (role === "user") {
+			const { content } = m as { content: Message["content"] };
+			transformed.push({
+				role: "user",
+				content,
+			} as Message);
 		} else {
 			transformed.push(m as Message);
 		}

@@ -1,14 +1,14 @@
-import { i18n, icon } from "@mariozechner/mini-lit";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
-import type { ToolResultMessage } from "@mariozechner/pi-ai";
+import { type Static, Type } from "@sinclair/typebox";
+import { i18n, icon } from "@sitegeist/mini-lit";
+import type { AgentTool } from "@sitegeist/pi-agent-core";
+import type { ToolResultMessage } from "@sitegeist/pi-ai";
 import {
 	registerToolRenderer,
 	renderCollapsibleHeader,
 	renderHeader,
 	type ToolRenderer,
 	type ToolRenderResult,
-} from "@mariozechner/pi-web-ui";
-import { type Static, Type } from "@sinclair/typebox";
+} from "@sitegeist/pi-web-ui";
 import { html } from "lit";
 import { createRef, ref } from "lit/directives/ref.js";
 import { Loader2, MousePointer2 } from "lucide";

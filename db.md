@@ -1,7 +1,9 @@
 # Sitegeist Database & Subscription Architecture
 
+> Legacy note: this document is a historical architecture proposal. It keeps older host, deployment, and proxy references for context only. Do not treat the implementation details below as current guidance unless they are separately confirmed in live code or docs.
+
 **Date:** 2025-10-24
-**Status:** Architecture Design Phase
+**Status:** Legacy historical note
 
 ---
 
@@ -50,7 +52,7 @@ Per-user data on server:
 
 ---
 
-## Current Infrastructure
+## Historical Infrastructure Notes
 
 ### Existing Server: slayer.marioslab.io
 
@@ -303,7 +305,7 @@ DATABASE_URL=postgresql://new-host/sitegeist
 
 ---
 
-## AI Proxy Architecture
+## Historical AI Proxy Architecture
 
 ### Overview
 

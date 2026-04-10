@@ -10,16 +10,20 @@
 		"build:chrome": "node ./scripts/build.mjs && tailwindcss -i ./src/app.css -o ./dist-chrome/app.css --minify",
 		"build": "npm run build:chrome",
 		"dev": "concurrently -n \"build,css,server\" -c \"blue,green,yellow\" \"node ./scripts/build.mjs --watch\" \"tailwindcss -i ./src/app.css -o ./dist-chrome/app.css --watch\" \"node ./scripts/dev-server.mjs\"",
-		"typecheck": "tsc --noEmit",
-		"check": "biome check --write . && tsc --noEmit && cd site && npm run check",
+		"typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+		"auth:fake": "tsx tests/fake-auth/server.ts",
+		"test:unit": "vitest run --config vitest.config.ts",
+		"test:e2e": "cross-env SITEGEIST_FAKE_AUTH_URL=http://127.0.0.1:48652 npm run build:chrome && cross-env SITEGEIST_FAKE_AUTH_URL=http://127.0.0.1:48652 playwright test",
+		"test:local": "npm run typecheck && npm run test:unit && npm run test:e2e",
+		"check": "biome check . && npm run typecheck && cd site && npm run check",
 		"prepare": "husky"
 	},
 	"dependencies": {
-		"@mariozechner/jailjs": "^0.1.0",
-		"@mariozechner/mini-lit": "file:../mini-lit",
-		"@mariozechner/pi-agent-core": "file:../pi-mono/packages/agent",
-		"@mariozechner/pi-ai": "file:../pi-mono/packages/ai",
-		"@mariozechner/pi-web-ui": "file:../pi-mono/packages/web-ui",
+		"@sitegeist/jailjs": "npm:@mariozechner/jailjs@^0.1.0",
+		"@sitegeist/mini-lit": "npm:@mariozechner/mini-lit@^0.2.1",
+		"@sitegeist/pi-agent-core": "npm:@mariozechner/pi-agent-core@0.58.3",
+		"@sitegeist/pi-ai": "npm:@mariozechner/pi-ai@0.58.3",
+		"@sitegeist/pi-web-ui": "npm:@mariozechner/pi-web-ui@0.58.3",
 		"@sinclair/typebox": "^0.34.41",
 		"chart.js": "^4.5.1",
 		"docx-preview": "^0.3.7",
@@ -37,13 +41,18 @@
 		"xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.57.0",
 		"@biomejs/biome": "2.3.5",
 		"@tailwindcss/cli": "^4.0.0-beta.14",
 		"@types/chrome": "^0.1.24",
+		"@types/node": "^24.5.2",
 		"@types/webextension-polyfill": "^0.12.4",
 		"concurrently": "^9.2.1",
+		"cross-env": "^10.1.0",
 		"esbuild": "^0.25.10",
 		"husky": "^9.1.7",
+		"typescript": "^5.9.3",
+		"vitest": "^3.2.4",
 		"ws": "^8.18.0"
 	}
 }

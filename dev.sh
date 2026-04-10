@@ -1,57 +1,31 @@
 #!/bin/bash
 
-# Start all development servers for sitegeist and its dependencies
-# Usage: ./dev.sh
-
 set -e
 
-echo "Starting development servers..."
+FAKE_AUTH_URL="${SITEGEIST_FAKE_AUTH_URL:-http://127.0.0.1:48652}"
+
+echo "Starting Sitegeist local development..."
+echo "Fake auth URL: ${FAKE_AUTH_URL}"
 echo ""
 
-# Check if required directories exist
-if [ ! -d "../pi-mono" ]; then
-    echo "Error: pi-mono not found at ../pi-mono"
-    exit 1
-fi
+trap 'echo ""; echo "Stopping local services..."; kill 0' EXIT INT TERM
 
-if [ ! -d "../mini-lit" ]; then
-    echo "Error: mini-lit not found at ../mini-lit"
-    exit 1
-fi
+echo "Starting fake auth server..."
+npm run auth:fake &
 
-# Kill all child processes on exit
-trap 'echo ""; echo "Stopping all dev servers..."; kill 0' EXIT INT TERM
+echo "Starting extension watcher..."
+SITEGEIST_FAKE_AUTH_URL="${FAKE_AUTH_URL}" npm run dev &
 
-# Start dev servers
-echo "Starting mini-lit dev server..."
-(cd ../mini-lit && npm run dev:tsc) &
-MINI_LIT_PID=$!
-
-echo "Starting pi-mono dev server..."
-(cd ../pi-mono && npm run dev:tsc) &
-PI_MONO_PID=$!
-
-# Wait a moment for dependencies to start building
-sleep 2
-
-echo "Starting sitegeist dev server..."
-npm run dev &
-SITEGEIST_PID=$!
-
-echo "Starting sitegeist site dev server..."
+echo "Starting site dev server..."
 (cd site && ./run.sh dev) &
-SITE_PID=$!
 
 echo ""
-echo "All dev services started"
-echo "  mini-lit: watching"
-echo "  pi-mono: watching"
-echo "  sitegeist: watching"
-echo "  site backend: http://localhost:3000"
-echo "  site frontend: http://localhost:8080"
+echo "Services running:"
+echo "  fake auth: ${FAKE_AUTH_URL}"
+echo "  extension: dist-chrome watcher"
+echo "  site: http://localhost:8080"
 echo ""
-echo "Press Ctrl+C to stop all services"
+echo "Press Ctrl+C to stop"
 echo ""
 
-# Wait for all background jobs
 wait

@@ -2,70 +2,73 @@
   <img src="media/hero.png" alt="Sitegeist" width="400">
 </p>
 
-An AI assistant that lives in your browser sidebar. Built for collaboration, not autonomy theater. You guide, it executes.
+Sitegeist is an AI browser agent that lives in your sidebar. You guide it, it works the page.
 
-Sitegeist can automate repetitive web tasks, extract data from any website, navigate across pages, fill out forms, compare products, compile research, and transform what it finds into documents, spreadsheets, or whatever you need. It works on any website through a Chrome/Edge side panel, using the AI provider of your choice.
+It can navigate sites, fill forms, scrape structured data, compare results across tabs, and turn what it finds into documents, spreadsheets, or other artifacts. Sitegeist runs as a Chromium side panel extension and supports both subscription-backed logins and API keys.
 
-Bring your own API key or log in with an existing subscription (Anthropic Claude, OpenAI/ChatGPT, GitHub Copilot, Google Gemini). Your data stays on your machine. Nothing is collected or tracked.
+## Download
 
-## Download & Install
+Get the latest build from [GitHub Releases](https://github.com/MylesMCook/sitegeist/releases/latest).
 
-Visit [sitegeist.ai](https://sitegeist.ai) for download links and step-by-step installation instructions.
+Requires Chrome 141+ or another Chromium browser with the same extension APIs.
 
-Requires Chrome 141+ or Edge equivalent.
+## Local setup
+
+Install dependencies:
+
+```bash
+npm install
+(cd site && npm install)
+```
+
+Optional local overrides live in `sitegeist.config.local.json`. Start from `sitegeist.config.example.json` if you want to point the extension at a fake auth server, a custom update feed, or a personal proxy.
 
 ## Development
 
-Clone this repo plus its sibling dependencies into the same parent directory:
-
-```
-parent/
-  mini-lit/          # https://github.com/badlogic/mini-lit
-  pi-mono/           # https://github.com/badlogic/pi-mono
-  sitegeist/         # this repo
-```
-
-Install dependencies in each repo:
-
-```bash
-(cd ../mini-lit && npm install)
-(cd ../pi-mono && npm install)
-npm install
-```
-
-`npm install` sets up the Husky pre-commit hook automatically.
-
-Start all dev watchers (mini-lit, pi-mono, sitegeist extension, marketing site):
+`./dev.sh` starts the extension watcher, the local fake auth server, and the static site dev server.
 
 ```bash
 ./dev.sh
 ```
 
-Changes in `../mini-lit` or `../pi-mono` are rebuilt automatically and picked up by the sitegeist watcher.
+Load the extension from `dist-chrome/`:
 
-To run only the extension watcher without dependencies or the marketing site:
+1. Open `chrome://extensions/`
+2. Enable Developer mode
+3. Click `Load unpacked`
+4. Select `sitegeist/dist-chrome/`
+5. Enable `Allow user scripts`
+6. Enable `Allow access to file URLs`
+
+The default dev loop is local-first. Subscription login flows point at the fake auth server started by `./dev.sh`.
+
+## Local auth test loop
+
+Run the local checks and auth harness:
 
 ```bash
-npm run dev
+./check.sh
+npm run test:local
 ```
 
-### Loading the extension
+For a manual local smoke:
 
-1. Open `chrome://extensions/` or `edge://extensions/`
-2. Enable Developer mode
-3. Click Load unpacked
-4. Select `sitegeist/dist-chrome/`
-5. Click "Details" on the Sitegeist extension and enable:
-   - **Allow user scripts**
-   - **Allow access to file URLs**
+```bash
+npm run auth:fake
+```
 
-The extension hot-reloads when the dev watcher rebuilds.
+Then launch the extension with `SITEGEIST_FAKE_AUTH_URL=http://127.0.0.1:48652` set in `sitegeist.config.local.json` or your shell.
 
-### First run
+## Live provider smoke
 
-On first launch, Sitegeist prompts you to connect at least one AI provider. You can log in with a subscription or enter an API key.
+Automated tests stay local. Use live providers only for occasional manual verification:
 
-Some subscription logins require the CORS proxy (configurable in Settings > Proxy). The default proxy is `https://proxy.mariozechner.at/proxy`.
+1. Remove or unset `fakeAuthUrl`
+2. Reload the unpacked extension
+3. Connect the real provider
+4. Confirm the provider can answer a prompt and refresh its token
+
+Proxy usage is explicit. Sitegeist does not ship with a public proxy default.
 
 ## Checks
 
@@ -73,35 +76,39 @@ Some subscription logins require the CORS proxy (configurable in Settings > Prox
 ./check.sh
 ```
 
-Runs formatting, linting, and type checking for the extension and the `site/` subproject.
+This runs Biome and TypeScript checks for the extension and the static site.
 
-The Husky pre-commit hook runs the same checks before each commit.
+## Website
 
-## Building
-
-```bash
-npm run build
-```
-
-The unpacked extension is written to `dist-chrome/`.
-
-## Updating the website
+The landing page lives in `site/src/frontend/`.
 
 ```bash
-cd site && ./run.sh deploy
+cd site && ./run.sh dev
+cd site && ./run.sh build
 ```
 
-Builds the static site and uploads it to `sitegeist.ai`. Requires SSH access to `slayer.marioslab.io`.
+`./run.sh deploy` is environment-driven. Set `SITEGEIST_SITE_DEPLOY_HOST` and `SITEGEIST_SITE_DEPLOY_PATH` before using it.
 
-## Releasing
+## Publish
+
+`publish.sh` builds the extension zip and optional `version.json`, then uploads them to a host you control.
+
+Set:
+
+- `SITEGEIST_UPLOAD_HOST`
+- `SITEGEIST_UPLOAD_PATH`
+
+before running it.
+
+## Release
 
 ```bash
-./release.sh patch   # 1.0.0 -> 1.0.1
-./release.sh minor   # 1.0.0 -> 1.1.0
-./release.sh major   # 1.0.0 -> 2.0.0
+./release.sh patch
+./release.sh minor
+./release.sh major
 ```
 
-Bumps the version in `static/manifest.chrome.json`, commits, tags, and pushes. GitHub Actions builds the extension and creates a release at [github.com/badlogic/sitegeist/releases](https://github.com/badlogic/sitegeist/releases).
+This updates `static/manifest.chrome.json`, finalizes the changelog, tags the release, and pushes it.
 
 ## License
 

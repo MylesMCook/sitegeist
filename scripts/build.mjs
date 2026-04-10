@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, watch } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, watch } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, context } from "esbuild";
@@ -8,6 +8,7 @@ const __dirname = dirname(__filename);
 const packageRoot = join(__dirname, "..");
 const isWatch = process.argv.includes("--watch");
 const staticDir = join(packageRoot, "static");
+const localConfigPath = join(packageRoot, "sitegeist.config.local.json");
 
 // Chrome only
 const targetBrowser = "chrome";
@@ -19,6 +20,34 @@ const entryPoints = {
 	icons: join(packageRoot, "src/icons.ts"),
 	background: join(packageRoot, "src/background.ts"),
 };
+
+const loadAppConfig = () => {
+	let localConfig = {};
+	if (existsSync(localConfigPath)) {
+		localConfig = JSON.parse(readFileSync(localConfigPath, "utf8"));
+	}
+
+	const getOverride = (envKey, configKey) => {
+		const envValue = process.env[envKey]?.trim();
+		if (envValue) {
+			return envValue;
+		}
+
+		const configValue = localConfig[configKey];
+		return typeof configValue === "string" && configValue.trim().length > 0 ? configValue.trim() : undefined;
+	};
+
+	return {
+		repoUrl: getOverride("SITEGEIST_REPO_URL", "repoUrl"),
+		releasesUrl: getOverride("SITEGEIST_RELEASES_URL", "releasesUrl"),
+		updatePageUrl: getOverride("SITEGEIST_UPDATE_URL", "updatePageUrl"),
+		versionUrl: getOverride("SITEGEIST_VERSION_URL", "versionUrl"),
+		defaultProxyUrl: getOverride("SITEGEIST_PROXY_URL", "defaultProxyUrl"),
+		fakeAuthUrl: getOverride("SITEGEIST_FAKE_AUTH_URL", "fakeAuthUrl"),
+	};
+};
+
+const appConfig = loadAppConfig();
 
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
@@ -41,12 +70,13 @@ const buildOptions = {
 		"process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV ?? (isWatch ? "development" : "production")),
 		"process.env.TARGET_BROWSER": JSON.stringify(targetBrowser),
 		global: "globalThis",
+		__SITEGEIST_APP_CONFIG__: JSON.stringify(appConfig),
 	},
 	inject: [join(packageRoot, "scripts/process-shim.js")],
 	// Force all mini-lit and lit imports to resolve to sitegeist's node_modules
 	alias: {
 		process: join(packageRoot, "scripts/process-shim.js"),
-		"@mariozechner/mini-lit": join(packageRoot, "node_modules/@mariozechner/mini-lit"),
+		"@sitegeist/mini-lit": join(packageRoot, "node_modules/@sitegeist/mini-lit"),
 		lit: join(packageRoot, "node_modules/lit"),
 		"lit/decorators.js": join(packageRoot, "node_modules/lit/decorators.js"),
 		"lit/directives/class-map.js": join(packageRoot, "node_modules/lit/directives/class-map.js"),

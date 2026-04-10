@@ -1,11 +1,11 @@
 /* Import Claude theme from mini-lit */
-@import "@mariozechner/mini-lit/styles/themes/default.css";
+@import "@sitegeist/mini-lit/styles/themes/default.css";
 
 /* Tell Tailwind to scan mini-lit components */
-@source "../node_modules/@mariozechner/mini-lit/dist";
+@source "../node_modules/@sitegeist/mini-lit/dist";
 
 /* Tell Tailwind to scan web-ui components from file: dependency */
-@source "../node_modules/@mariozechner/pi-web-ui/src";
+@source "../node_modules/@sitegeist/pi-web-ui/src";
 
 /* Tell Tailwind to scan local components */
 @source "../src/**/*.ts";

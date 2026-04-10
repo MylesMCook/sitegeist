@@ -1,8 +1,8 @@
-import "@mariozechner/mini-lit/dist/MarkdownBlock.js";
-import { DialogBase } from "@mariozechner/mini-lit/dist/DialogBase.js";
-import { icon } from "@mariozechner/mini-lit/dist/icons.js";
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import type { AssistantMessage } from "@mariozechner/pi-ai";
+import "@sitegeist/mini-lit/dist/MarkdownBlock.js";
+import { DialogBase } from "@sitegeist/mini-lit/dist/DialogBase.js";
+import { icon } from "@sitegeist/mini-lit/dist/icons.js";
+import type { AgentMessage } from "@sitegeist/pi-agent-core";
+import type { AssistantMessage } from "@sitegeist/pi-ai";
 import { Chart, type ChartConfiguration, registerables } from "chart.js";
 import type { PropertyValues } from "lit";
 import { html } from "lit";

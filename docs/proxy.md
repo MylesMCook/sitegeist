@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sitegeist uses a **CORS Proxy** to handle Cross-Origin Resource Sharing restrictions for:
+Sitegeist uses an optional **CORS Proxy** to handle Cross-Origin Resource Sharing restrictions for:
 
 1. **LLM API calls** - When providers block direct browser requests
 2. **Document extraction** - When websites block automated downloads from extensions
@@ -14,7 +14,9 @@ Browser extensions face CORS restrictions when making HTTP requests:
 1. **LLM API Calls**: Some providers (Anthropic with OAuth tokens, Z-AI) have CORS headers that block direct browser requests
 2. **Document Extraction**: Websites serving PDFs/DOCX files often have CORS policies that block automated downloads
 
-Without a CORS proxy, these requests would fail in the browser environment.
+Without a configured CORS proxy, some of these requests may fail in the browser environment.
+
+> Legacy note: earlier versions of this document described a proxy-on-by-default setup with a placeholder host. That is no longer the current guidance. Proxy use is explicit configuration only.
 
 ## Current Implementation
 
@@ -110,25 +112,23 @@ Without a CORS proxy, these requests would fail in the browser environment.
 
 - **`src/agent/transports/AppTransport.ts`**:
   - Alternative transport implementation in pi-web-ui package
-  - Uses `genai.mariozechner.at` backend with OAuth tokens
+  - Uses `your-provider-backend.example.com` backend with OAuth tokens
   - **Not used by Sitegeist** - Sitegeist only uses `ProviderTransport`
 
 ### Default Configuration
 
-**Location**: `src/sidepanel.ts:776-785`
+**Location**: `src/sidepanel.ts`
 
 ```typescript
 const proxyEnabled = await storage.settings.get<boolean>("proxy.enabled");
 if (proxyEnabled === null) {
-  await storage.settings.set("proxy.enabled", true);
-  await storage.settings.set("proxy.url", "https://proxy.mariozechner.at/proxy");
+  await storage.settings.set("proxy.enabled", false);
 }
 ```
 
 **Defaults**:
-- Proxy is **enabled by default**
-- Default URL: `https://proxy.mariozechner.at/proxy`
-- This proxy does not retain or log data (as stated in tutorials)
+- Proxy is **disabled by default**
+- Proxy URL is only used when explicitly configured
 
 ### Storage Schema
 
@@ -136,8 +136,8 @@ Settings stored in IndexedDB under `sitegeist-storage` database:
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `proxy.enabled` | `boolean` | `true` | Whether CORS proxy is enabled |
-| `proxy.url` | `string` | `"https://proxy.mariozechner.at/proxy"` | CORS proxy server URL |
+| `proxy.enabled` | `boolean` | `false` | Whether CORS proxy is enabled |
+| `proxy.url` | `string` | `"https://<configured-proxy>/proxy"` | CORS proxy server URL |
 
 ## Provider-Specific Proxy Logic
 
@@ -185,15 +185,15 @@ This approach minimizes proxy usage since many document URLs don't have CORS res
 
 The CORS proxy expects URLs in this format:
 ```
-https://proxy.mariozechner.at/proxy/?url=<encoded-target-url>
+https://<configured-proxy>/proxy/?url=<encoded-target-url>
 ```
 
 Example:
 ```typescript
 const targetUrl = "https://api.anthropic.com/v1/messages";
-const proxyUrl = "https://proxy.mariozechner.at/proxy";
+const proxyUrl = "https://<configured-proxy>/proxy";
 const proxiedUrl = `${proxyUrl}/?url=${encodeURIComponent(targetUrl)}`;
-// Result: "https://proxy.mariozechner.at/proxy/?url=https%3A%2F%2Fapi.anthropic.com%2Fv1%2Fmessages"
+// Result: "https://<configured-proxy>/proxy/?url=https%3A%2F%2Fapi.anthropic.com%2Fv1%2Fmessages"
 ```
 
 ### How the Proxy Works
@@ -211,7 +211,7 @@ This bypasses browser CORS restrictions because:
 ### Privacy Considerations
 
 From tutorials.ts:90:
-> CORS proxy (on by default): If enabled in settings, requests to the LLM go through the proxy due to CORS restrictions when using an Anthropic OAuth token, or using Z-AI. Default is https://proxy.mariozechner.at/proxy which does not retain or log data. Use your own proxy or a service like corsproxy.io if preferred
+> CORS proxy: If enabled in settings, requests to the LLM go through the proxy due to CORS restrictions when using an Anthropic OAuth token or using Z-AI. Configure your own proxy endpoint if you need one.
 
 Users can:
 1. Disable the proxy (if using providers that don't need it)

@@ -1,5 +1,5 @@
-import { icon } from "@mariozechner/mini-lit";
-import { Button } from "@mariozechner/mini-lit/dist/Button.js";
+import { icon } from "@sitegeist/mini-lit";
+import { Button } from "@sitegeist/mini-lit/dist/Button.js";
 import { html, render } from "lit";
 import { ArrowLeft, Download } from "lucide";
 import "./components/OrbAnimation.js";

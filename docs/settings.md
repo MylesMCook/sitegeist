@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sitegeist uses a key-value settings store for application configuration like theme, proxy settings, and user preferences. Settings are stored in IndexedDB and accessed through the `SettingsStore` class from `@mariozechner/pi-web-ui`.
+Sitegeist uses a key-value settings store for application configuration like theme, proxy settings, and user preferences. Settings are stored in IndexedDB and accessed through the `SettingsStore` class from `@sitegeist/pi-web-ui`.
 
 ## Architecture
 
@@ -47,7 +47,7 @@ Settings are stored in IndexedDB under:
 
 ### Proxy Configuration
 
-Used for CORS proxy support when making cross-origin requests:
+Proxy support is optional and configured explicitly:
 
 | Key | Type | Description |
 |-----|------|-------------|
@@ -61,7 +61,7 @@ const proxyEnabled = await storage.settings.get<boolean>("proxy.enabled");
 
 // Set proxy configuration
 await storage.settings.set("proxy.enabled", true);
-await storage.settings.set("proxy.url", "https://proxy.mariozechner.at/proxy");
+await storage.settings.set("proxy.url", "https://<configured-proxy>/proxy");
 ```
 
 ### Last Used Model
@@ -206,7 +206,7 @@ if (modelId) {
 Always have sensible defaults when settings are missing:
 
 ```typescript
-const proxyUrl = await storage.settings.get<string>("proxy.url") ?? "https://proxy.mariozechner.at/proxy";
+const proxyUrl = await storage.settings.get<string>("proxy.url") ?? "https://<configured-proxy>/proxy";
 const proxyEnabled = await storage.settings.get<boolean>("proxy.enabled") ?? false;
 ```
 
@@ -356,7 +356,7 @@ interface ProxyConfig {
 // Write
 const config: ProxyConfig = {
   enabled: true,
-  url: "https://proxy.mariozechner.at/proxy",
+  url: "https://<configured-proxy>/proxy",
   timeout: 5000,
 };
 await storage.settings.set("proxy", config);

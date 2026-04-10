@@ -1,15 +1,8 @@
-/**
- * Google Gemini CLI (Cloud Code Assist) OAuth flow for browser extensions.
- *
- * Uses the same client ID and endpoints as the CLI,
- * but replaces the local HTTP callback server with tab URL watching.
- * All Google endpoints have CORS enabled for chrome extensions, no proxy needed.
- */
-
-import { generatePKCE, waitForOAuthRedirect } from "./browser-oauth.js";
+import { generatePKCE } from "./browser-oauth.js";
+import type { OAuthProviderAdapter } from "./runtime.js";
 import type { OAuthCredentials } from "./types.js";
 
-const decode = (s: string) => atob(s);
+const decode = (value: string) => atob(value);
 const CLIENT_ID = decode(
 	"NjgxMjU1ODA5Mzk1LW9vOGZ0Mm9wcmRybnA5ZTNhcWY2YXYzaG1kaWIxMzVqLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29t",
 );
@@ -25,172 +18,235 @@ const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const CODE_ASSIST_ENDPOINT = "https://cloudcode-pa.googleapis.com";
 
-async function discoverProject(accessToken: string): Promise<string> {
-	const headers: Record<string, string> = {
+interface LoadCodeAssistResponse {
+	cloudaicompanionProject?: string;
+	allowedTiers?: Array<{ id: string; isDefault?: boolean }>;
+}
+
+interface OnboardResponse {
+	done?: boolean;
+	name?: string;
+	response?: {
+		cloudaicompanionProject?: {
+			id?: string;
+		};
+	};
+}
+
+function getProjectId(onboardData: OnboardResponse): string | undefined {
+	const projectId = onboardData.response?.cloudaicompanionProject?.id;
+	if (typeof projectId === "string" && projectId.length > 0) {
+		return projectId;
+	}
+	return undefined;
+}
+
+function isPendingOnboardingResponse(
+	onboardData: OnboardResponse,
+): onboardData is OnboardResponse & { done: false; name: string } {
+	return onboardData.done === false && typeof onboardData.name === "string" && onboardData.name.length > 0;
+}
+
+function getEndpoints(fakeAuthUrl?: string) {
+	if (!fakeAuthUrl) {
+		return {
+			authorizeUrl: AUTH_URL,
+			tokenUrl: TOKEN_URL,
+			loadCodeAssistUrl: `${CODE_ASSIST_ENDPOINT}/v1internal:loadCodeAssist`,
+			onboardUrl: `${CODE_ASSIST_ENDPOINT}/v1internal:onboardUser`,
+			pollBaseUrl: `${CODE_ASSIST_ENDPOINT}/v1internal/`,
+		};
+	}
+
+	return {
+		authorizeUrl: `${fakeAuthUrl}/google-gemini-cli/authorize`,
+		tokenUrl: `${fakeAuthUrl}/google-gemini-cli/token`,
+		loadCodeAssistUrl: `${fakeAuthUrl}/google-gemini-cli/load-code-assist`,
+		onboardUrl: `${fakeAuthUrl}/google-gemini-cli/onboard-user`,
+		pollBaseUrl: `${fakeAuthUrl}/google-gemini-cli/operations/`,
+	};
+}
+
+async function discoverProject(
+	accessToken: string,
+	context: Parameters<OAuthProviderAdapter["login"]>[0],
+): Promise<string> {
+	const endpoints = getEndpoints(context.config.fakeAuthUrl);
+	const headers = {
 		Authorization: `Bearer ${accessToken}`,
-		"Content-Type": "application/json",
 		"User-Agent": "google-api-nodejs-client/9.15.1",
 		"X-Goog-Api-Client": "gl-node/22.17.0",
 	};
 
-	const loadResponse = await fetch(`${CODE_ASSIST_ENDPOINT}/v1internal:loadCodeAssist`, {
-		method: "POST",
-		headers,
-		body: JSON.stringify({
-			metadata: {
+	const loadData = await context.http.postJson<LoadCodeAssistResponse>(
+		endpoints.loadCodeAssistUrl,
+		{
+			metadata: JSON.stringify({
 				ideType: "IDE_UNSPECIFIED",
 				platform: "PLATFORM_UNSPECIFIED",
 				pluginType: "GEMINI",
-			},
-		}),
-	});
+			}),
+		},
+		{ headers },
+	);
 
-	if (!loadResponse.ok) {
-		const errorText = await loadResponse.text();
-		throw new Error(`loadCodeAssist failed: ${loadResponse.status} ${errorText}`);
+	if (typeof loadData.cloudaicompanionProject === "string" && loadData.cloudaicompanionProject.length > 0) {
+		return loadData.cloudaicompanionProject;
 	}
 
-	const data = await loadResponse.json();
-
-	if (data.cloudaicompanionProject) {
-		return data.cloudaicompanionProject;
-	}
-
-	// Need onboarding
-	const tierId = data.allowedTiers?.find((t: any) => t.isDefault)?.id || "free-tier";
-
-	const onboardResponse = await fetch(`${CODE_ASSIST_ENDPOINT}/v1internal:onboardUser`, {
-		method: "POST",
-		headers,
-		body: JSON.stringify({
-			tierId,
-			metadata: {
+	const defaultTier = loadData.allowedTiers?.find((tier) => tier.isDefault)?.id || "free-tier";
+	let onboardData = await context.http.postJson<OnboardResponse>(
+		endpoints.onboardUrl,
+		{
+			tierId: defaultTier,
+			metadata: JSON.stringify({
 				ideType: "IDE_UNSPECIFIED",
 				platform: "PLATFORM_UNSPECIFIED",
 				pluginType: "GEMINI",
-			},
-		}),
-	});
+			}),
+		},
+		{ headers },
+	);
 
-	if (!onboardResponse.ok) {
-		const errorText = await onboardResponse.text();
-		throw new Error(`onboardUser failed: ${onboardResponse.status} ${errorText}`);
-	}
-
-	let lroData = await onboardResponse.json();
-
-	// Poll if not done
-	while (!lroData.done && lroData.name) {
-		await new Promise((r) => setTimeout(r, 5000));
-		const pollResponse = await fetch(`${CODE_ASSIST_ENDPOINT}/v1internal/${lroData.name}`, {
-			method: "GET",
+	while (isPendingOnboardingResponse(onboardData)) {
+		await context.http.sleep(1000);
+		onboardData = await context.http.getJson<OnboardResponse>(`${endpoints.pollBaseUrl}${onboardData.name}`, {
 			headers,
 		});
-		if (!pollResponse.ok) throw new Error(`Poll failed: ${pollResponse.status}`);
-		lroData = await pollResponse.json();
 	}
 
-	const projectId = lroData.response?.cloudaicompanionProject?.id;
-	if (projectId) return projectId;
+	const projectId = getProjectId(onboardData);
+	if (projectId) {
+		return projectId;
+	}
 
-	throw new Error("Could not discover or provision a Google Cloud project for Gemini CLI.");
+	if (onboardData.done === true) {
+		throw new Error("Google Gemini onboarding completed without a project id.");
+	}
+
+	throw new Error("Malformed Google Gemini onboarding response.");
 }
 
-/**
- * Run the Gemini CLI OAuth login flow in the browser.
- * Opens a tab for Google sign-in, watches for the redirect.
- * All endpoints have CORS enabled, no proxy needed.
- */
-export async function loginGeminiCli(): Promise<OAuthCredentials> {
-	const { verifier, challenge } = await generatePKCE();
+function buildCredentials(tokenData: {
+	access_token?: string;
+	refresh_token?: string;
+	expires_in?: number;
+	projectId: string;
+	now: () => number;
+}): OAuthCredentials {
+	const access = tokenData.access_token;
+	const refresh = tokenData.refresh_token;
+	const expiresIn = tokenData.expires_in;
 
-	const authParams = new URLSearchParams({
-		client_id: CLIENT_ID,
-		response_type: "code",
-		redirect_uri: REDIRECT_URI,
-		scope: SCOPES.join(" "),
-		code_challenge: challenge,
-		code_challenge_method: "S256",
-		state: verifier,
-		access_type: "offline",
-		prompt: "consent",
-	});
+	if (!access || !refresh || typeof expiresIn !== "number") {
+		throw new Error("Token response missing required fields");
+	}
 
-	const redirectUrl = await waitForOAuthRedirect(`${AUTH_URL}?${authParams.toString()}`, REDIRECT_HOST);
+	return {
+		providerId: "google-gemini-cli",
+		access,
+		refresh,
+		expires: tokenData.now() + expiresIn * 1000 - 5 * 60 * 1000,
+		projectId: tokenData.projectId,
+	};
+}
 
-	const code = redirectUrl.searchParams.get("code");
-	const state = redirectUrl.searchParams.get("state");
+export const googleGeminiCliAdapter: OAuthProviderAdapter = {
+	id: "google-gemini-cli",
+	name: "Google Gemini",
+	serializeApiKey(credentials) {
+		const projectId = credentials.projectId;
+		if (!projectId) {
+			throw new Error("Gemini CLI credentials missing projectId");
+		}
 
-	if (!code) throw new Error("Missing authorization code in redirect");
-	if (state !== verifier) throw new Error("OAuth state mismatch");
+		return JSON.stringify({ token: credentials.access, projectId });
+	},
 
-	// Exchange code for tokens (Google has CORS enabled)
-	const tokenResponse = await fetch(TOKEN_URL, {
-		method: "POST",
-		headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		body: new URLSearchParams({
+	async login(context) {
+		const { verifier, challenge } = await generatePKCE();
+		const endpoints = getEndpoints(context.config.fakeAuthUrl);
+
+		const authParams = new URLSearchParams({
+			client_id: CLIENT_ID,
+			response_type: "code",
+			redirect_uri: REDIRECT_URI,
+			scope: SCOPES.join(" "),
+			code_challenge: challenge,
+			code_challenge_method: "S256",
+			state: verifier,
+			access_type: "offline",
+			prompt: "consent",
+		});
+
+		const redirectUrl = await context.browser.waitForRedirect(
+			`${endpoints.authorizeUrl}?${authParams.toString()}`,
+			REDIRECT_HOST,
+		);
+
+		const code = redirectUrl.searchParams.get("code");
+		const state = redirectUrl.searchParams.get("state");
+		if (!code) {
+			throw new Error("Missing authorization code in redirect");
+		}
+		if (state !== verifier) {
+			throw new Error("OAuth state mismatch");
+		}
+
+		const tokenData = await context.http.postForm<{
+			access_token?: string;
+			refresh_token?: string;
+			expires_in?: number;
+		}>(endpoints.tokenUrl, {
 			client_id: CLIENT_ID,
 			client_secret: CLIENT_SECRET,
 			code,
 			grant_type: "authorization_code",
 			redirect_uri: REDIRECT_URI,
 			code_verifier: verifier,
-		}),
-	});
+		});
 
-	if (!tokenResponse.ok) {
-		const error = await tokenResponse.text();
-		throw new Error(`Token exchange failed: ${error}`);
-	}
+		if (!tokenData.refresh_token) {
+			throw new Error("No refresh token received. Please try again.");
+		}
 
-	const tokenData = await tokenResponse.json();
+		const projectId = await discoverProject(tokenData.access_token || "", context);
 
-	if (!tokenData.refresh_token) {
-		throw new Error("No refresh token received. Please try again.");
-	}
+		return buildCredentials({
+			...tokenData,
+			projectId,
+			now: context.now,
+		});
+	},
 
-	// Discover project
-	const projectId = await discoverProject(tokenData.access_token);
+	async refresh(context, credentials) {
+		const projectId = credentials.projectId;
+		if (!projectId) {
+			throw new Error("Gemini CLI credentials missing projectId");
+		}
 
-	return {
-		providerId: "google-gemini-cli",
-		access: tokenData.access_token,
-		refresh: tokenData.refresh_token,
-		expires: Date.now() + tokenData.expires_in * 1000 - 5 * 60 * 1000,
-		projectId,
-	};
-}
-
-/**
- * Refresh a Gemini CLI token. No proxy needed.
- */
-export async function refreshGeminiCli(credentials: OAuthCredentials): Promise<OAuthCredentials> {
-	const projectId = credentials.projectId;
-	if (!projectId) throw new Error("Gemini CLI credentials missing projectId");
-
-	const response = await fetch(TOKEN_URL, {
-		method: "POST",
-		headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		body: new URLSearchParams({
+		const endpoints = getEndpoints(context.config.fakeAuthUrl);
+		const tokenData = await context.http.postForm<{
+			access_token?: string;
+			refresh_token?: string;
+			expires_in?: number;
+		}>(endpoints.tokenUrl, {
 			client_id: CLIENT_ID,
 			client_secret: CLIENT_SECRET,
 			refresh_token: credentials.refresh,
 			grant_type: "refresh_token",
-		}),
-	});
+		});
 
-	if (!response.ok) {
-		const error = await response.text();
-		throw new Error(`Token refresh failed: ${error}`);
-	}
+		if (!tokenData.access_token || typeof tokenData.expires_in !== "number") {
+			throw new Error("Token refresh response missing required fields");
+		}
 
-	const data = await response.json();
-
-	return {
-		providerId: "google-gemini-cli",
-		access: data.access_token,
-		refresh: data.refresh_token || credentials.refresh,
-		expires: Date.now() + data.expires_in * 1000 - 5 * 60 * 1000,
-		projectId,
-	};
-}
+		return {
+			providerId: "google-gemini-cli",
+			access: tokenData.access_token,
+			refresh: tokenData.refresh_token || credentials.refresh,
+			expires: context.now() + tokenData.expires_in * 1000 - 5 * 60 * 1000,
+			projectId,
+		};
+	},
+};

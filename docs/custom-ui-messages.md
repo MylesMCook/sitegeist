@@ -21,7 +21,7 @@ export type AppMessage = BaseMessage | CustomMessages[keyof CustomMessages];
 
 **Extending**: Add custom types via declaration merging
 ```typescript
-declare module "@mariozechner/pi-web-ui" {
+declare module "@sitegeist/pi-web-ui" {
   interface CustomMessages {
     welcome: WelcomeMessage;
     navigation: NavigationMessage;
@@ -54,7 +54,7 @@ export interface NavigationMessage {
   favicon?: string;
 }
 
-declare module "@mariozechner/pi-web-ui" {
+declare module "@sitegeist/pi-web-ui" {
   interface CustomMessages {
     navigation: NavigationMessage;
   }
@@ -120,7 +120,7 @@ function createNavigationRenderer(agent: Agent): MessageRenderer<NavigationMessa
 ### 4. Register Renderer
 
 ```typescript
-import { registerMessageRenderer } from "@mariozechner/pi-web-ui";
+import { registerMessageRenderer } from "@sitegeist/pi-web-ui";
 
 registerMessageRenderer("navigation", navigationRenderer);
 ```
@@ -261,3 +261,4 @@ document.addEventListener("tutorial-selected", (e: CustomEvent) => {
 - `sitegeist/src/messages/WelcomeMessage.ts` - UI-only message
 - `sitegeist/src/message-transformer.ts` - Message transformation
 - `sitegeist/src/sidepanel.ts` - Agent setup and event handling
+

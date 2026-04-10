@@ -1,28 +1,22 @@
-import { icon } from "@mariozechner/mini-lit";
-import { Button } from "@mariozechner/mini-lit/dist/Button.js";
-import { Input } from "@mariozechner/mini-lit/dist/Input.js";
-import "@mariozechner/mini-lit/dist/ThemeToggle.js";
-import {
-	Agent,
-	type AgentEvent,
-	type AgentMessage,
-	type AgentState,
-	type AgentTool,
-} from "@mariozechner/pi-agent-core";
-import { getModel, getModels, type Model } from "@mariozechner/pi-ai";
+import { icon } from "@sitegeist/mini-lit";
+import { Button } from "@sitegeist/mini-lit/dist/Button.js";
+import { Input } from "@sitegeist/mini-lit/dist/Input.js";
+import "@sitegeist/mini-lit/dist/ThemeToggle.js";
+import { Agent, type AgentEvent, type AgentMessage, type AgentState, type AgentTool } from "@sitegeist/pi-agent-core";
+import { type Api, getModel, getModels, type Model } from "@sitegeist/pi-ai";
 import {
 	ChatPanel,
 	createExtractDocumentTool,
 	createStreamFn,
-	ModelSelector,
 	ProxyTab,
 	SettingsDialog,
 	// PersistentStorageDialog,
 	setAppStorage,
 	setShowJsonMode,
-} from "@mariozechner/pi-web-ui";
+} from "@sitegeist/pi-web-ui";
 import { html, render } from "lit";
 import { History, Plus, Settings } from "lucide";
+import { appConfig } from "./config/app-config.js";
 import { AboutTab } from "./dialogs/AboutTab.js";
 import { ApiKeyOrOAuthDialog } from "./dialogs/ApiKeyOrOAuthDialog.js";
 import { ApiKeysOAuthTab } from "./dialogs/ApiKeysOAuthTab.js";
@@ -41,6 +35,7 @@ import {
 } from "./messages/NavigationMessage.js";
 import { registerUserMessageRenderer } from "./messages/UserMessageRenderer.js";
 import { createWelcomeMessage, registerWelcomeRenderer } from "./messages/WelcomeMessage.js";
+import { normalizeStoredModel, OPENAI_CHATGPT_MODEL, resolveModel } from "./models.js";
 import { isOAuthCredentials, resolveApiKey } from "./oauth/index.js";
 import { SYSTEM_PROMPT } from "./prompts/prompts.js";
 import { SitegeistAppStorage } from "./storage/app-storage.js";
@@ -105,6 +100,8 @@ const recordedCostMessages = new Set<AgentMessage>();
 // Cached auth type label for the current provider
 let authLabel = "";
 
+const OAUTH_PROVIDER_PRIORITY = ["openai-codex", "anthropic", "github-copilot", "google-gemini-cli"] as const;
+
 const DEFAULT_MODELS: Record<string, string> = {
 	"amazon-bedrock": "us.anthropic.claude-opus-4-6-v1",
 	anthropic: "claude-sonnet-4-6",
@@ -122,7 +119,7 @@ const DEFAULT_MODELS: Record<string, string> = {
 	"minimax-cn": "MiniMax-M2.1",
 	mistral: "devstral-medium-latest",
 	openai: "gpt-4o-mini",
-	"openai-codex": "gpt-5.1-codex-mini",
+	"openai-codex": OPENAI_CHATGPT_MODEL,
 	opencode: "claude-opus-4-6",
 	"opencode-go": "kimi-k2.5",
 	openrouter: "openai/gpt-5.1-codex",
@@ -131,28 +128,48 @@ const DEFAULT_MODELS: Record<string, string> = {
 	zai: "glm-4.6",
 };
 
+function getDefaultModelForProvider(provider: string): Model<Api> | undefined {
+	const modelId = DEFAULT_MODELS[provider];
+	if (!modelId) {
+		return undefined;
+	}
+
+	return getModel(provider as never, modelId as never) as Model<Api> | undefined;
+}
+
+function getOAuthProviderSortKey(provider: string): number {
+	const index = OAUTH_PROVIDER_PRIORITY.indexOf(provider as (typeof OAUTH_PROVIDER_PRIORITY)[number]);
+	return index === -1 ? OAUTH_PROVIDER_PRIORITY.length : index;
+}
+
+async function getConfiguredProxyUrl(): Promise<string | undefined> {
+	const enabled = await storage.settings.get<boolean>("proxy.enabled");
+	if (!enabled) {
+		return undefined;
+	}
+
+	return (await storage.settings.get<string>("proxy.url")) || appConfig.defaultProxyUrl;
+}
+
 async function selectDefaultModelForAvailableProvider() {
 	const providers = await getProvidersWithKeys();
 	if (providers.length === 0 || !agent) return;
 
 	// Try each provider with keys and find a default model
 	for (const provider of providers) {
-		const modelId = DEFAULT_MODELS[provider];
-		if (modelId) {
-			const model = getModel(provider as any, modelId);
-			if (model) {
-				agent.setModel(model);
-				await storage.settings.set("lastUsedModel", model);
-				await updateAuthLabel();
-				renderApp();
-				return;
-			}
+		const model = getDefaultModelForProvider(provider);
+		if (model) {
+			agent.setModel(model);
+			await storage.settings.set("lastUsedModel", model);
+			await updateAuthLabel();
+			renderApp();
+			return;
 		}
 	}
 
 	// If no default found, try the first model for the first provider with a key
 	for (const provider of providers) {
-		const models = getModels(provider as any);
+		const models = getModels(provider as never) as Model<Api>[];
 		if (models.length > 0) {
 			agent.setModel(models[0]);
 			await storage.settings.set("lastUsedModel", models[0]);
@@ -165,26 +182,36 @@ async function selectDefaultModelForAvailableProvider() {
 
 async function getProvidersWithKeys(): Promise<string[]> {
 	const providers = await storage.providerKeys.list();
-	const result: string[] = [];
+	const result: Array<{ provider: string; storedValue: string }> = [];
 	for (const provider of providers) {
-		const key = await storage.providerKeys.get(provider);
-		if (key) result.push(provider);
+		const storedValue = await storage.providerKeys.get(provider);
+		if (storedValue) {
+			result.push({ provider, storedValue });
+		}
 	}
-	return result;
+
+	result.sort((left, right) => {
+		const leftIsOAuth = isOAuthCredentials(left.storedValue);
+		const rightIsOAuth = isOAuthCredentials(right.storedValue);
+		if (leftIsOAuth !== rightIsOAuth) {
+			return leftIsOAuth ? -1 : 1;
+		}
+		if (leftIsOAuth && rightIsOAuth) {
+			return getOAuthProviderSortKey(left.provider) - getOAuthProviderSortKey(right.provider);
+		}
+		return left.provider.localeCompare(right.provider);
+	});
+
+	return result.map(({ provider }) => provider);
 }
 
-async function hasAnyApiKey(): Promise<boolean> {
+async function hasConnectedProvider(): Promise<boolean> {
 	const providers = await storage.providerKeys.list();
 	return providers.length > 0;
 }
 
-function openApiKeysDialog(): Promise<void> {
-	return new Promise((resolve) => {
-		SettingsDialog.open(
-			[new ApiKeysOAuthTab(), new CostsTab(), new SkillsTab(), new ProxyTab(), new AboutTab()],
-			resolve,
-		);
-	});
+function openProvidersDialog(): Promise<void> {
+	return SettingsDialog.open([new ApiKeysOAuthTab(), new CostsTab(), new SkillsTab(), new ProxyTab(), new AboutTab()]);
 }
 
 async function updateAuthLabel() {
@@ -349,26 +376,29 @@ const createAgent = async (initialState?: Partial<AgentState>, shouldSave = true
 	const debuggerModeEnabled = stored.debuggerMode || false;
 
 	// Load CORS proxy settings for extract_document tool
-	const corsProxyEnabled = await storage.settings.get<boolean>("proxy.enabled");
-	const corsProxyUrl = await storage.settings.get<string>("proxy.url");
+	const corsProxyUrl = await getConfiguredProxyUrl();
 
 	// Determine default model: saved > default for a provider with key > gemini flash fallback
-	let defaultModel: Model<any> | undefined;
+	let defaultModel: Model<Api> | undefined;
+	const normalizedInitialState = initialState?.model
+		? {
+				...initialState,
+				model: normalizeStoredModel(initialState.model),
+			}
+		: initialState;
+
 	if (!initialState?.model) {
-		const savedModel = await storage.settings.get<Model<any>>("lastUsedModel");
+		const savedModel = await storage.settings.get<Model<Api>>("lastUsedModel");
 		if (savedModel) {
-			defaultModel = savedModel;
+			defaultModel = normalizeStoredModel(savedModel);
 		} else {
 			// Try to find a default model for a provider the user already has a key for
 			const providersWithKeys = await getProvidersWithKeys();
 			for (const provider of providersWithKeys) {
-				const modelId = DEFAULT_MODELS[provider];
-				if (modelId) {
-					const model = getModel(provider as any, modelId);
-					if (model) {
-						defaultModel = model;
-						break;
-					}
+				const model = getDefaultModelForProvider(provider);
+				if (model) {
+					defaultModel = model;
+					break;
 				}
 			}
 		}
@@ -379,7 +409,7 @@ const createAgent = async (initialState?: Partial<AgentState>, shouldSave = true
 	}
 
 	agent = new Agent({
-		initialState: initialState || {
+		initialState: normalizedInitialState || {
 			systemPrompt: SYSTEM_PROMPT,
 			model: defaultModel,
 			thinkingLevel: "medium",
@@ -388,16 +418,11 @@ const createAgent = async (initialState?: Partial<AgentState>, shouldSave = true
 		},
 		convertToLlm: browserMessageTransformer,
 		toolExecution: "sequential",
-		streamFn: createStreamFn(async () => {
-			const enabled = await storage.settings.get<boolean>("proxy.enabled");
-			if (!enabled) return undefined;
-			return (await storage.settings.get<string>("proxy.url")) || undefined;
-		}),
+		streamFn: createStreamFn(async () => getConfiguredProxyUrl()),
 		getApiKey: async (provider: string) => {
 			const stored = await storage.providerKeys.get(provider);
 			if (!stored) return undefined;
-			const proxyEnabled = await storage.settings.get<boolean>("proxy.enabled");
-			const proxyUrl = proxyEnabled ? (await storage.settings.get<string>("proxy.url")) || undefined : undefined;
+			const proxyUrl = await getConfiguredProxyUrl();
 			return resolveApiKey(stored, provider, storage.providerKeys, proxyUrl);
 		},
 	});
@@ -464,23 +489,6 @@ const createAgent = async (initialState?: Partial<AgentState>, shouldSave = true
 		onApiKeyRequired: async (provider: string) => {
 			return await ApiKeyOrOAuthDialog.prompt(provider);
 		},
-		onModelSelect: async () => {
-			const providers = await getProvidersWithKeys();
-			if (providers.length === 0) {
-				openApiKeysDialog();
-				return;
-			}
-			ModelSelector.open(
-				agent.state.model,
-				(model) => {
-					agent.setModel(model);
-					chatPanel.agentInterface?.requestUpdate();
-					updateAuthLabel().catch(() => {});
-					renderApp();
-				},
-				providers,
-			);
-		},
 		onBeforeSend: async () => {
 			if (!agent) return;
 
@@ -521,7 +529,7 @@ const createAgent = async (initialState?: Partial<AgentState>, shouldSave = true
 
 			// Create extract_document tool with CORS proxy from settings (loaded above)
 			const extractDocumentTool = createExtractDocumentTool();
-			if (corsProxyEnabled && corsProxyUrl) {
+			if (corsProxyUrl) {
 				extractDocumentTool.corsProxyUrl = `${corsProxyUrl}/?url=`;
 			}
 
@@ -817,7 +825,7 @@ async function testSteps(): Promise<boolean> {
 		// Set model if specified
 		let initialState: Partial<AgentState> | undefined;
 		if (testProvider && testModel) {
-			const model = getModel(testProvider as any, testModel);
+			const model = resolveModel(testProvider, testModel);
 			if (model) {
 				initialState = {
 					systemPrompt: SYSTEM_PROMPT,
@@ -879,11 +887,15 @@ function isNewerVersion(latest: string, current: string): boolean {
 }
 
 async function checkForUpdates() {
+	if (!appConfig.versionUrl) {
+		return;
+	}
+
 	try {
 		const currentVersion = chrome.runtime.getManifest().version;
 
 		// Fetch latest version
-		const response = await fetch("https://sitegeist.ai/uploads/version.json", {
+		const response = await fetch(appConfig.versionUrl, {
 			cache: "no-cache",
 		});
 		const data = await response.json();
@@ -946,8 +958,13 @@ async function initApp() {
 	const { initializeDefaultSkills } = await import("./tools/skill.js");
 	await initializeDefaultSkills();
 
-	// Proxy disabled — CORS is handled locally via declarativeNetRequest rules
-	await storage.settings.set("proxy.enabled", false);
+	if ((await storage.settings.get<boolean>("proxy.enabled")) === undefined) {
+		await storage.settings.set("proxy.enabled", false);
+	}
+
+	if (!(await storage.settings.get<string>("proxy.url")) && appConfig.defaultProxyUrl) {
+		await storage.settings.set("proxy.url", appConfig.defaultProxyUrl);
+	}
 
 	// Create ChatPanel
 	chatPanel = new ChatPanel();
@@ -1035,10 +1052,10 @@ async function initApp() {
 
 	renderApp();
 
-	// If no API keys configured, show welcome dialog, open settings, then auto-select model
-	if (!(await hasAnyApiKey())) {
+	// If no providers are connected, show welcome dialog, open settings, then auto-select a model.
+	if (!(await hasConnectedProvider())) {
 		await WelcomeSetupDialog.show();
-		await openApiKeysDialog();
+		await openProvidersDialog();
 		await selectDefaultModelForAvailableProvider();
 		renderApp();
 	}

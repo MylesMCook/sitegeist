@@ -1,7 +1,7 @@
-import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
-import type { ImageContent, TextContent, ToolResultMessage } from "@mariozechner/pi-ai";
-import { registerToolRenderer, renderHeader, type ToolRenderer, type ToolRenderResult } from "@mariozechner/pi-web-ui";
 import { type Static, Type } from "@sinclair/typebox";
+import type { AgentTool, AgentToolResult } from "@sitegeist/pi-agent-core";
+import type { ImageContent, TextContent, ToolResultMessage } from "@sitegeist/pi-ai";
+import { registerToolRenderer, renderHeader, type ToolRenderer, type ToolRenderResult } from "@sitegeist/pi-web-ui";
 import { html } from "lit";
 import { Image as ImageIcon } from "lucide";
 

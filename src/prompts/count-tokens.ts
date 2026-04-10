@@ -8,7 +8,7 @@ import {
 	ARTIFACTS_TOOL_DESCRIPTION,
 	ATTACHMENTS_RUNTIME_DESCRIPTION,
 	EXTRACT_DOCUMENT_DESCRIPTION,
-} from "../../../pi-mono/packages/web-ui/dist/prompts/prompts.js";
+} from "../../node_modules/@sitegeist/pi-web-ui/dist/prompts/prompts.js";
 import {
 	ASK_USER_WHICH_ELEMENT_TOOL_DESCRIPTION,
 	BROWSERJS_RUNTIME_PROVIDER_DESCRIPTION,
@@ -38,6 +38,26 @@ if (!anthropicApiKey) {
 }
 
 const ANTHROPIC_API_KEY = anthropicApiKey;
+
+interface ToolDefinition {
+	name: string;
+	description: string;
+	input_schema: {
+		type: "object";
+		properties: Record<string, unknown>;
+		required?: string[];
+	};
+}
+
+interface CountTokensRequest {
+	model: string;
+	system: string;
+	messages: Array<{
+		role: "user";
+		content: string;
+	}>;
+	tools?: ToolDefinition[];
+}
 
 // Tool definitions matching sidepanel.ts
 export const TOOL_DEFINITIONS = [
@@ -183,14 +203,14 @@ export const TOOL_DEFINITIONS = [
 			required: ["url"],
 		},
 	},
-];
+] satisfies ToolDefinition[];
 
 interface TokenCountResponse {
 	input_tokens: number;
 }
 
-async function countTokens(system: string, message?: string, tools?: any[]): Promise<number> {
-	const body: any = {
+async function countTokens(system: string, message?: string, tools?: ToolDefinition[]): Promise<number> {
+	const body: CountTokensRequest = {
 		model: "claude-3-5-sonnet-20241022",
 		system,
 		messages: [

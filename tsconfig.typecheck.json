@@ -1,0 +1,10 @@
+{
+	"extends": "./tsconfig.build.json",
+	"compilerOptions": {
+		"rootDir": ".",
+		"types": ["chrome", "node"],
+		"noEmit": true
+	},
+	"include": ["src/**/*.ts", "tests/**/*.ts", "playwright.config.ts"],
+	"exclude": ["dist", "dist-chrome", "node_modules", "site/dist"]
+}

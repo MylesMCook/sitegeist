@@ -34,9 +34,14 @@ VERSION=$(node -p "require('./dist-chrome/manifest.json').version")
 echo "{\"version\":\"${VERSION}\"}" > version.json
 
 echo "📤 Uploading to server..."
-# Upload to sitegeist.ai uploads directory
-SERVER="slayer.marioslab.io"
-REMOTE_PATH="/home/badlogic/sitegeist.ai/uploads"
+
+if [ -z "${SITEGEIST_UPLOAD_HOST:-}" ] || [ -z "${SITEGEIST_UPLOAD_PATH:-}" ]; then
+    echo "Set SITEGEIST_UPLOAD_HOST and SITEGEIST_UPLOAD_PATH to publish artifacts."
+    exit 1
+fi
+
+SERVER="${SITEGEIST_UPLOAD_HOST}"
+REMOTE_PATH="${SITEGEIST_UPLOAD_PATH}"
 
 # Ensure uploads directory exists on server
 ssh "${SERVER}" "mkdir -p ${REMOTE_PATH}"
@@ -45,4 +50,4 @@ ssh "${SERVER}" "mkdir -p ${REMOTE_PATH}"
 scp "${ZIP_NAME}" "${SERVER}:${REMOTE_PATH}/"
 scp "version.json" "${SERVER}:${REMOTE_PATH}/"
 
-echo "✅ Done! Version ${VERSION} published to sitegeist.ai/uploads/"
+echo "✅ Done! Version ${VERSION} published to ${SERVER}:${REMOTE_PATH}/"

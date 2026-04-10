@@ -1,7 +1,7 @@
-import { Button } from "@mariozechner/mini-lit/dist/Button.js";
-import { DialogContent, DialogHeader } from "@mariozechner/mini-lit/dist/Dialog.js";
-import { DialogBase } from "@mariozechner/mini-lit/dist/DialogBase.js";
-import { getAppStorage } from "@mariozechner/pi-web-ui";
+import { Button } from "@sitegeist/mini-lit/dist/Button.js";
+import { DialogContent, DialogHeader } from "@sitegeist/mini-lit/dist/Dialog.js";
+import { DialogBase } from "@sitegeist/mini-lit/dist/DialogBase.js";
+import { getAppStorage } from "@sitegeist/pi-web-ui";
 import { html } from "lit";
 import { Toast } from "../components/Toast.js";
 import {
@@ -11,12 +11,13 @@ import {
 	oauthLogin,
 	serializeOAuthCredentials,
 } from "../oauth/index.js";
+import { settleCredentialPromptSuccess } from "./credential-prompt.js";
 // ProviderKeyInput custom element is registered via pi-web-ui main export
-import "@mariozechner/pi-web-ui";
+import "@sitegeist/pi-web-ui";
 
 /**
- * Prompt dialog shown when trying to use a provider with no key.
- * Shows both OAuth login (if available) and API key entry.
+ * Prompt dialog shown when trying to use a provider with no stored credentials.
+ * Leads with subscription login when available and keeps API keys behind an advanced path.
  */
 export class ApiKeyOrOAuthDialog extends DialogBase {
 	private provider = "";
@@ -46,10 +47,7 @@ export class ApiKeyOrOAuthDialog extends DialogBase {
 		this.checkInterval = setInterval(async () => {
 			const hasKey = !!(await getAppStorage().providerKeys.get(this.provider));
 			if (hasKey) {
-				if (this.checkInterval) clearInterval(this.checkInterval);
-				this.resolvePromise?.(true);
-				this.resolvePromise = undefined;
-				this.close();
+				this.resolveSuccess();
 			}
 		}, 500);
 	}
@@ -64,6 +62,20 @@ export class ApiKeyOrOAuthDialog extends DialogBase {
 		if (this.resolvePromise) {
 			this.resolvePromise(false);
 		}
+	}
+
+	private resolveSuccess() {
+		const nextState = settleCredentialPromptSuccess(
+			{
+				checkInterval: this.checkInterval,
+				resolvePromise: this.resolvePromise,
+			},
+			(interval) => clearInterval(interval),
+		);
+
+		this.checkInterval = nextState.checkInterval;
+		this.resolvePromise = nextState.resolvePromise;
+		this.close();
 	}
 
 	private async handleOAuthLogin() {
@@ -85,6 +97,7 @@ export class ApiKeyOrOAuthDialog extends DialogBase {
 			this.oauthStatus = "idle";
 			this.deviceCode = null;
 			Toast.success(`Logged in to ${getOAuthProviderName(this.provider as OAuthProviderId)}`);
+			this.resolveSuccess();
 		} catch (error) {
 			console.error(`OAuth login failed for ${this.provider}:`, error);
 			this.oauthStatus = "error";
@@ -96,26 +109,29 @@ export class ApiKeyOrOAuthDialog extends DialogBase {
 
 	protected renderContent() {
 		const supportsOAuth = isOAuthProvider(this.provider);
+		const providerName = supportsOAuth ? getOAuthProviderName(this.provider as OAuthProviderId) : this.provider;
 
 		return html`
 			${DialogContent({
 				className: "flex flex-col gap-4",
 				children: html`
 					${DialogHeader({
-						title: `Connect to ${this.provider}`,
-						description: "Set up authentication to use this provider's models.",
+						title: supportsOAuth ? `Connect ${providerName}` : `Set up ${providerName}`,
+						description: supportsOAuth
+							? "Connect your existing subscription to use this provider right away."
+							: "Enter an API key to use this provider's models.",
 					})}
 
 					${
 						supportsOAuth
 							? html`
 							<div class="flex flex-col gap-3">
-								<h3 class="text-sm font-semibold text-foreground">Subscription Login</h3>
+								<h3 class="text-sm font-semibold text-foreground">Subscription</h3>
 
 								<div class="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
 									<div class="flex-1">
 										<div class="text-sm font-medium text-foreground">
-											${getOAuthProviderName(this.provider as OAuthProviderId)}
+											${providerName}
 										</div>
 										<div class="text-xs text-muted-foreground mt-1">
 											${
@@ -125,7 +141,7 @@ export class ApiKeyOrOAuthDialog extends DialogBase {
 														: "Logging in..."
 													: this.oauthStatus === "error"
 														? html`<span class="text-destructive">${this.oauthError}</span>`
-														: "Log in with your existing subscription"
+														: "Use your existing subscription. No API key needed."
 											}
 										</div>
 									</div>
@@ -135,24 +151,37 @@ export class ApiKeyOrOAuthDialog extends DialogBase {
 										disabled: this.oauthStatus === "logging-in",
 										loading: this.oauthStatus === "logging-in",
 										onClick: () => this.handleOAuthLogin(),
-										children: "Login",
+										children: "Connect",
 									})}
 								</div>
 							</div>
-
-							<div class="flex items-center gap-3">
-								<div class="flex-1 border-t border-border"></div>
-								<span class="text-xs text-muted-foreground">or</span>
-								<div class="flex-1 border-t border-border"></div>
-							</div>
+							<details class="rounded-lg border border-border bg-card/40">
+								<summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-foreground">
+									Bring your own key
+									<span class="ml-2 text-xs font-normal text-muted-foreground">Advanced</span>
+								</summary>
+								<div class="flex flex-col gap-3 border-t border-border px-4 py-4">
+									<h3 class="text-sm font-semibold text-foreground">API key</h3>
+									<p class="text-sm text-muted-foreground">
+										Use direct API billing instead of your subscription when you want full control.
+									</p>
+									<provider-key-input .provider=${this.provider}></provider-key-input>
+								</div>
+							</details>
 						`
 							: ""
 					}
 
-					<div class="flex flex-col gap-3">
-						<h3 class="text-sm font-semibold text-foreground">API Key</h3>
-						<provider-key-input .provider=${this.provider}></provider-key-input>
-					</div>
+					${
+						supportsOAuth
+							? ""
+							: html`
+								<div class="flex flex-col gap-3">
+									<h3 class="text-sm font-semibold text-foreground">API key</h3>
+									<provider-key-input .provider=${this.provider}></provider-key-input>
+								</div>
+							`
+					}
 				`,
 			})}
 		`;

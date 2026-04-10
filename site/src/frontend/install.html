@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="app.css">
     <script>
         localStorage.setItem("theme", "dark");
-        document.documentElement.classList.add("dark");
+                document.documentElement.classList.add("dark");
     </script>
 </head>
 <body class="px-4 py-6 md:py-12">
@@ -38,7 +38,7 @@
                         <div class="flex-1">
                             <h3 class="text-lg font-semibold mb-2">Download Sitegeist</h3>
                             <p class="text-sm text-muted-foreground mb-3">Download the latest release from GitHub:</p>
-                            <a href="https://github.com/badlogic/sitegeist/releases/latest" target="_blank" class="inline-block px-6 py-3 font-medium rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/50 text-foreground transition-all hover:shadow-lg hover:shadow-orange-500/20">
+                            <a href="https://github.com/MylesMCook/sitegeist/releases/latest" target="_blank" class="inline-block px-6 py-3 font-medium rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/50 text-foreground transition-all hover:shadow-lg hover:shadow-orange-500/20">
                                 Download from GitHub
                             </a>
                         </div>
@@ -123,7 +123,7 @@
                         <div class="flex-shrink-0 w-8 h-8 rounded-full bg-orange-500/20 border border-orange-500/50 flex items-center justify-center font-bold text-sm">9</div>
                         <div class="flex-1">
                             <h3 class="text-lg font-semibold mb-2">Connect a Provider</h3>
-                            <p class="text-sm text-muted-foreground">On first launch, you will be prompted to connect an AI provider. Log in with a subscription (Anthropic, OpenAI, GitHub Copilot, Google Gemini) or enter an API key.</p>
+                            <p class="text-sm text-muted-foreground">On first launch, you will be prompted to connect an AI provider. Start with a subscription login for ChatGPT, Claude, GitHub Copilot, or Gemini. API keys are still there later under advanced setup.</p>
                         </div>
                     </div>
                 </div>
@@ -141,7 +141,7 @@
                         <div class="flex-1">
                             <h3 class="text-lg font-semibold mb-2">Download Latest Version</h3>
                             <p class="text-sm text-muted-foreground mb-3">Get the latest release from GitHub:</p>
-                            <a href="https://github.com/badlogic/sitegeist/releases/latest" target="_blank" class="inline-block px-6 py-3 font-medium rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/50 text-foreground transition-all hover:shadow-lg hover:shadow-orange-500/20">
+                            <a href="https://github.com/MylesMCook/sitegeist/releases/latest" target="_blank" class="inline-block px-6 py-3 font-medium rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/50 text-foreground transition-all hover:shadow-lg hover:shadow-orange-500/20">
                                 Download Latest Version
                             </a>
                         </div>
@@ -190,10 +190,10 @@
             <div class="p-6 border border-border rounded-lg mb-6">
                 <h3 class="text-xl font-semibold mb-3">Your Data Stays Private</h3>
                 <div class="space-y-2 text-sm text-muted-foreground">
-                    <p><strong>Settings, API keys, OAuth tokens:</strong> Stored only on your computer in the browser's IndexedDB. Never sent anywhere except to the provider you are using.</p>
+                    <p><strong>Settings and provider credentials:</strong> Stored only on your computer in the browser's IndexedDB. OAuth tokens and API keys never leave your machine except to the provider you are using.</p>
                     <p><strong>Chat history:</strong> Stored only on your computer.</p>
                     <p><strong>When you send messages:</strong> Your messages and attachments are sent to your chosen AI provider. These providers are configured to not retain your data or use it for training when supported.</p>
-                    <p><strong>CORS proxy:</strong> Some subscription logins and API calls require a CORS proxy. The default proxy (<code class="px-2 py-1 rounded bg-muted text-xs font-mono">proxy.mariozechner.at</code>) does not log or store data. You can configure your own in Settings.</p>
+                    <p><strong>CORS proxy:</strong> Some subscription logins and provider API calls may require a proxy because of provider-side browser restrictions. Configure one only when you need it.</p>
                 </div>
             </div>
 
@@ -214,7 +214,7 @@
         </div>
 
         <footer class="text-center text-muted-foreground text-xs mt-12">
-            <p>Made by <a href="https://mariozechner.at" class="text-foreground underline">Mario Zechner</a></p>
+            <p>Built by <a href="https://github.com/MylesMCook" class="text-foreground underline">Myles Cook</a></p>
             <p class="mt-2">This page respects your privacy by not using cookies or similar technologies and not collecting personal information.</p>
         </footer>
     </div>
@@ -222,3 +222,4 @@
     <script type="module" src="OrbAnimation.ts"></script>
 </body>
 </html>
+

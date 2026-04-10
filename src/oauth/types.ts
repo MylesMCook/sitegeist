@@ -1,9 +1,13 @@
+export type OAuthProviderId = "anthropic" | "openai-codex" | "github-copilot" | "google-gemini-cli";
+
+export type DeviceCodeCallback = (info: { userCode: string; verificationUri: string }) => void;
+
 /**
  * OAuth credentials stored as JSON in the provider keys store.
  * When a stored key starts with "{", it is parsed as OAuthCredentials.
  */
 export interface OAuthCredentials {
-	providerId: string;
+	providerId: OAuthProviderId;
 	access: string;
 	refresh: string;
 	expires: number;

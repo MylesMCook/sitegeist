@@ -1,106 +1,59 @@
-/**
- * Browser OAuth integration for sitegeist.
- *
- * Credentials are stored as JSON strings in the provider keys store.
- * When getApiKey encounters a JSON string, it parses it as OAuthCredentials,
- * refreshes the token if expired, and returns the access token.
- */
-
-import { loginAnthropic, refreshAnthropic } from "./anthropic.js";
-import { loginGitHubCopilot, refreshGitHubCopilot } from "./github-copilot.js";
-import { loginGeminiCli, refreshGeminiCli } from "./google-gemini-cli.js";
-import { loginOpenAICodex, refreshOpenAICodex } from "./openai-codex.js";
+import { anthropicAdapter } from "./anthropic.js";
+import { githubCopilotAdapter } from "./github-copilot.js";
+import { googleGeminiCliAdapter } from "./google-gemini-cli.js";
+import { openAICodexAdapter } from "./openai-codex.js";
+import { createOAuthRuntime as createRuntime, type OAuthProviderAdapter, type OAuthRuntime } from "./runtime.js";
 import {
+	type DeviceCodeCallback,
 	isOAuthCredentials,
 	type OAuthCredentials,
+	type OAuthProviderId,
 	parseOAuthCredentials,
 	serializeOAuthCredentials,
 } from "./types.js";
 
-export { type OAuthCredentials, isOAuthCredentials, parseOAuthCredentials, serializeOAuthCredentials };
+export { isOAuthCredentials, parseOAuthCredentials, serializeOAuthCredentials };
+export type { DeviceCodeCallback, OAuthCredentials, OAuthProviderId, OAuthProviderAdapter, OAuthRuntime };
 
-export type OAuthProviderId = "anthropic" | "openai-codex" | "github-copilot" | "google-gemini-cli";
-
-const OAUTH_PROVIDERS: Record<OAuthProviderId, { name: string }> = {
-	anthropic: { name: "Anthropic (Claude Pro/Max)" },
-	"openai-codex": { name: "ChatGPT Plus/Pro" },
-	"github-copilot": { name: "GitHub Copilot" },
-	"google-gemini-cli": { name: "Google Gemini" },
+const OAUTH_PROVIDERS: Record<OAuthProviderId, OAuthProviderAdapter> = {
+	anthropic: anthropicAdapter,
+	"openai-codex": openAICodexAdapter,
+	"github-copilot": githubCopilotAdapter,
+	"google-gemini-cli": googleGeminiCliAdapter,
 };
 
-/**
- * Check if a provider supports OAuth login.
- */
+const oauthRuntime = createRuntime(OAUTH_PROVIDERS);
+
+export function createOAuthRuntime(dependencies?: Parameters<typeof createRuntime>[1]): OAuthRuntime {
+	return createRuntime(OAUTH_PROVIDERS, dependencies);
+}
+
 export function isOAuthProvider(provider: string): provider is OAuthProviderId {
 	return provider in OAUTH_PROVIDERS;
 }
 
-/**
- * Get display name for an OAuth provider.
- */
 export function getOAuthProviderName(provider: OAuthProviderId): string {
 	return OAUTH_PROVIDERS[provider].name;
 }
 
-/**
- * Callback for device code flows (GitHub Copilot).
- * Called with the user code and verification URL that the user needs to enter.
- */
-export type DeviceCodeCallback = (info: { userCode: string; verificationUri: string }) => void;
-
-/**
- * Run the OAuth login flow for a provider.
- * Returns credentials to store.
- */
 export async function oauthLogin(
 	provider: OAuthProviderId,
-	_proxyUrl?: string,
+	proxyUrl?: string,
 	onDeviceCode?: DeviceCodeCallback,
 ): Promise<OAuthCredentials> {
-	switch (provider) {
-		case "anthropic":
-			return loginAnthropic();
-		case "openai-codex":
-			return loginOpenAICodex();
-		case "github-copilot":
-			return loginGitHubCopilot(onDeviceCode || (() => {}));
-		case "google-gemini-cli":
-			return loginGeminiCli();
-		default:
-			throw new Error(`Unknown OAuth provider: ${provider}`);
-	}
+	return oauthRuntime.login(provider, { proxyUrl, onDeviceCode });
 }
 
-/**
- * Refresh OAuth credentials for a provider.
- * Returns updated credentials to store.
- */
-export async function oauthRefresh(credentials: OAuthCredentials, _proxyUrl?: string): Promise<OAuthCredentials> {
-	switch (credentials.providerId) {
-		case "anthropic":
-			return refreshAnthropic(credentials);
-		case "openai-codex":
-			return refreshOpenAICodex(credentials);
-		case "github-copilot":
-			return refreshGitHubCopilot(credentials);
-		case "google-gemini-cli":
-			return refreshGeminiCli(credentials);
-		default:
-			throw new Error(`Unknown OAuth provider: ${credentials.providerId}`);
-	}
+export async function oauthRefresh(credentials: OAuthCredentials, proxyUrl?: string): Promise<OAuthCredentials> {
+	return oauthRuntime.refresh(credentials, { proxyUrl });
 }
 
-/**
- * Resolve an API key from stored value.
- * If the value is a plain string, return it directly.
- * If it is JSON (OAuth credentials), refresh if expired and return the access token.
- * Updates storage with refreshed credentials.
- */
 export async function resolveApiKey(
 	storedValue: string,
 	provider: string,
 	storage: { set: (provider: string, value: string) => Promise<void> },
 	proxyUrl?: string,
+	runtime: OAuthRuntime = oauthRuntime,
 ): Promise<string> {
 	if (!isOAuthCredentials(storedValue)) {
 		return storedValue;
@@ -108,10 +61,9 @@ export async function resolveApiKey(
 
 	let credentials = parseOAuthCredentials(storedValue);
 
-	// Refresh if expired (or within 60s of expiry)
 	if (Date.now() >= credentials.expires - 60_000) {
 		try {
-			credentials = await oauthRefresh(credentials, proxyUrl);
+			credentials = await runtime.refresh(credentials, { proxyUrl });
 			await storage.set(provider, serializeOAuthCredentials(credentials));
 		} catch (error) {
 			console.error(`Failed to refresh OAuth token for ${provider}:`, error);
@@ -119,9 +71,10 @@ export async function resolveApiKey(
 		}
 	}
 
-	// Gemini CLI expects the API key as JSON with token and projectId
-	if (credentials.providerId === "google-gemini-cli") {
-		return JSON.stringify({ token: credentials.access, projectId: credentials.projectId });
+	const adapter = OAUTH_PROVIDERS[credentials.providerId];
+	const serializedApiKey = adapter?.serializeApiKey?.(credentials);
+	if (serializedApiKey) {
+		return serializedApiKey;
 	}
 
 	return credentials.access;

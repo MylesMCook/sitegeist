@@ -1,9 +1,9 @@
 /* Import theme (includes dark mode and utilities) */
-@import "@mariozechner/mini-lit/styles/themes/default.css";
+@import "@sitegeist/mini-lit/styles/themes/default.css";
 
 /* Tell Tailwind to scan mini-lit components */
 /* biome-ignore lint/suspicious/noUnknownAtRules: fine*/
-@source "../../node_modules/@mariozechner/mini-lit/dist";
+@source "../../node_modules/@sitegeist/mini-lit/dist";
 
 /* Import Tailwind */
 @import "tailwindcss";
@@ -126,3 +126,4 @@
 .error-message.visible {
 	display: block;
 }
+

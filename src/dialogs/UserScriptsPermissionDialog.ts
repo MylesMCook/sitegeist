@@ -1,4 +1,4 @@
-import { i18n } from "@mariozechner/mini-lit";
+import { i18n } from "@sitegeist/mini-lit";
 import { customElement } from "lit/decorators.js";
 import { requestUserScriptsPermission } from "../tools/repl/userscripts-helpers.js";
 import { PermissionDialog } from "./PermissionDialog.js";

@@ -1,7 +1,7 @@
-import { setTranslations } from "@mariozechner/mini-lit";
-import { translations as webUiTranslations } from "@mariozechner/pi-web-ui";
+import { setTranslations } from "@sitegeist/mini-lit";
+import { translations as webUiTranslations } from "@sitegeist/pi-web-ui";
 
-declare module "@mariozechner/mini-lit" {
+declare module "@sitegeist/mini-lit" {
 	interface i18nMessages {
 		// Web-UI base keys (needed for type safety)
 		"Delete this session?": string;

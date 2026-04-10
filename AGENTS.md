@@ -15,9 +15,8 @@ If the user did not give you a concrete task, read README.md first.
 - Always ask before removing functionality or code that appears intentional
 
 ## Dependencies
-- `@mariozechner/mini-lit`, `@mariozechner/pi-ai`, `@mariozechner/pi-web-ui`, `@mariozechner/pi-agent-core` are linked via `file:` to sibling repos `../mini-lit` and `../pi-mono`
-- Changes to those packages require rebuilding them (the dev watcher handles this)
-- If you need to modify upstream code, edit it in `../pi-mono` or `../mini-lit` directly and rebuild
+- Shared packages are linked locally through `file:` dependencies
+- If you change shared package code, edit it in the linked source workspace before rebuilding
 
 ## Changelog
 Location: `CHANGELOG.md`
@@ -48,7 +47,7 @@ When the user asks to update the website:
 ```bash
 cd site && ./run.sh deploy
 ```
-Requires SSH access to `slayer.marioslab.io`.
+Requires access to the configured deployment host.
 
 The site is static HTML (no backend). Source is in `site/src/frontend/`.
 

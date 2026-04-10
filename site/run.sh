@@ -4,9 +4,6 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
-SERVER=slayer.marioslab.io
-SERVER_DIR=/home/badlogic/sitegeist.ai
-
 case "$1" in
 dev)
     echo "Starting dev server at http://localhost:8080"
@@ -20,12 +17,17 @@ build)
     ;;
 
 deploy)
+    if [ -z "${SITEGEIST_SITE_DEPLOY_HOST:-}" ] || [ -z "${SITEGEIST_SITE_DEPLOY_PATH:-}" ]; then
+        echo "Set SITEGEIST_SITE_DEPLOY_HOST and SITEGEIST_SITE_DEPLOY_PATH before deploying."
+        exit 1
+    fi
+
     npm install
     npx vite build --config infra/vite.config.ts
 
-    echo "Uploading to $SERVER..."
-    ssh $SERVER "mkdir -p $SERVER_DIR/uploads"
-    rsync -avz --delete dist/ $SERVER:$SERVER_DIR/dist/
+    echo "Uploading to ${SITEGEIST_SITE_DEPLOY_HOST}..."
+    ssh "${SITEGEIST_SITE_DEPLOY_HOST}" "mkdir -p ${SITEGEIST_SITE_DEPLOY_PATH}/uploads"
+    rsync -avz --delete dist/ "${SITEGEIST_SITE_DEPLOY_HOST}:${SITEGEIST_SITE_DEPLOY_PATH}/dist/"
     echo "Deployed."
     ;;
 

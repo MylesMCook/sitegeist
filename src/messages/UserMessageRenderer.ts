@@ -1,5 +1,5 @@
-import type { Attachment, MessageRenderer } from "@mariozechner/pi-web-ui";
-import { registerMessageRenderer, type UserMessageWithAttachments } from "@mariozechner/pi-web-ui";
+import type { Attachment, MessageRenderer } from "@sitegeist/pi-web-ui";
+import { registerMessageRenderer, type UserMessageWithAttachments } from "@sitegeist/pi-web-ui";
 import { html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
 

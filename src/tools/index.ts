@@ -1,4 +1,4 @@
-import { BashRenderer, CalculateRenderer, GetCurrentTimeRenderer, registerToolRenderer } from "@mariozechner/pi-web-ui";
+import { BashRenderer, CalculateRenderer, GetCurrentTimeRenderer, registerToolRenderer } from "@sitegeist/pi-web-ui";
 import "./skill.js";
 import "./ask-user-which-element.js"; // Import for side effects (registers renderer)
 
