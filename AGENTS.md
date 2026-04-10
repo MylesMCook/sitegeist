@@ -80,3 +80,16 @@ site/
 static/
   manifest.chrome.json  # Extension manifest (version lives here)
 ```
+
+<!-- brainerd:start -->
+brainerd managed block
+
+This repo uses Brainerd.
+Before non-trivial repo work, read `brain/index.md` and `brain/principles.md`.
+Treat them as durable repo memory. Edit linked principle files or notes, not
+the generated entrypoints themselves. Use the harness-specific Brainerd
+actions instead of legacy aliases: `pi-init`, `pi-reflect`, `pi-ruminate`,
+`codex-init`, `codex-reflect`, `codex-ruminate`, `claude-init`,
+`claude-reflect`, and `claude-ruminate`. Do not perform memory writes
+automatically.
+<!-- brainerd:end -->

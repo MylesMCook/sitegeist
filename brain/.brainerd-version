@@ -1,0 +1,13 @@
+{
+  "version": "0.3.0",
+  "ownedFiles": [
+    "brain/.brainerd-version",
+    "brain/index.md",
+    "brain/principles.md",
+    "brain/principles/boundary-discipline.md",
+    "brain/principles/fix-root-causes.md",
+    "brain/principles/outcome-oriented-execution.md",
+    "brain/principles/prove-it-works.md",
+    "brain/principles/subtract-before-you-add.md"
+  ]
+}
